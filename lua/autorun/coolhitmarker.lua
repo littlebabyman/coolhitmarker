@@ -12,9 +12,9 @@ if SERVER then
         local attacker = dmginfo:GetAttacker()
 
         if ent.phm_lastHealth == nil then
-            if not ( ent:Health() > 0 ) then return end
+            if ent:Health() <= 0 then return end
         else
-            if not ( ent.phm_lastHealth > 0 ) then return end
+            if ent.phm_lastHealth <= 0 then return end
         end
 
         if took and IsValid(ent) and IsValid(attacker) and attacker:IsPlayer() then
@@ -119,14 +119,14 @@ else
             local state = (lastdistantshot - ct) * 2
             local message = (lasthmkill and lasthmhead) and "Long range HEADSHOT!!" or lasthmkill and "Long range kill!" or "Long range hit"
             -- surface.SetFont("CGHUD_7_Shadow")
-            surface.SetFont("ARC9_8_Glow")
+            surface.SetFont(ARC9 and "ARC9_8_Glow" or "GModNotify")
             surface.SetTextColor(0, 0, 0, 255 * state)
             surface.SetTextPos(scrw / 2 + 75 + 1, scrh / 2 + 1)
             surface.DrawText(message)
             surface.SetTextPos(scrw / 2 + 75 + 1, scrh / 2 + 20 + 1)
             surface.DrawText(lasthmdistance .. " m")
             -- surface.SetFont("CGHUD_7")
-            surface.SetFont("ARC9_8")
+            surface.SetFont(ARC9 and "ARC9_8" or "GModNotify")
             surface.SetTextColor(255, lasthmkill and 75 or 255, lasthmkill and 75 or 255, 255 * state)
             surface.SetTextPos(scrw / 2 + 75, scrh / 2)
             surface.DrawText(message)
@@ -166,7 +166,7 @@ else
         lasthmhead = head
         lasthmkill = killed
         lasthmarmor = armored
-        lasthmdistance = math.Round(distance * ARC9.HUToM, 1)
+        lasthmdistance = math.Round(distance * 0.0254, 1)
         lasthmprop = !isliving
         hmlength = killed and 0.5 or 0.22
 
