@@ -1,5 +1,5 @@
 -- if engine.ActiveGamemode() != "sandbox" then return end
-local longrangeshot = 3937/10 -- 50m
+local longrangeshot = 3937/2 -- 50m
 local extralongrangeshot = 3937/2 * 3 -- 150m
 
 if SERVER then
@@ -10,14 +10,6 @@ if SERVER then
 
     local function hitmark(ent, dmginfo, took)
         local attacker = dmginfo:GetAttacker()
-        if GetConVar("developer"):GetBool() and attacker and attacker:IsPlayer() then
-            print("Attacker: " .. (attacker:Nick() or attacker) .. "  Victim: " .. (ent:GetClass() or "unknown") .. "  Last recorded HP: " .. (ent.phm_lastHealth or 0) .. "  Current HP: " .. ent:Health())
-            if ent:IsPlayer() then
-                attacker:PrintMessage(HUD_PRINTCENTER, "Victim: " .. (ent:Nick() or "player" .. ent:EntIndex()) .. "\nDamage taken: " .. dmginfo:GetDamage() .. "\nLast recorded Armor: " .. (ent.phm_lastArmor or 0) .. "\nCurrent Armor: " .. ent:Armor() .. "\nLast recorded HP: " .. (ent.phm_lastHealth or 0) .. "\nCurrent HP: " .. ent:Health())
-            else
-                attacker:PrintMessage(HUD_PRINTCENTER, "Victim: " .. (ent:GetClass() or "unknown") .. "\nLast recorded HP: " .. (ent.phm_lastHealth or 0) .. "\nCurrent HP: " .. ent:Health())
-            end
-        end
 
         if !ent.phm_lastHealth then if ent:Health() <= 0 then return end elseif ent.phm_lastHealth <= 0 then return end
 
@@ -120,9 +112,17 @@ else
 
             surface.DrawTexturedRect(scrw / 2 - 18 - 25 * state, scrh / 2 - 18 - 25 * state, 36 + 50 * state, 36 + 50 * state)
 
-			if lasthmarmor == 1 or lasthmprop then -- prop damage
+			if lasthmarmor == 1 then -- prop damage
+                surface.SetMaterial(matgear)
+				surface.DrawTexturedRect(scrw / 2 - 108, scrh / 2 -12, 24, 24)
+			end
+			if lasthmprop then -- prop damage
                 surface.SetMaterial(matgear)
 				surface.DrawTexturedRect(scrw / 2 + 96, scrh / 2 -12, 24, 24)
+			end
+			if lasthmarmor == 1 or lasthmprop then -- prop damage
+                surface.SetMaterial(matgear)
+				surface.DrawTexturedRect(scrw / 2 - 12, scrh / 2 + 96, 24, 24)
 			end
         end
 
@@ -158,7 +158,11 @@ else
 			local ang = math.atan2(hitVec.x, hitVec.y) + math.rad(lp:EyeAngles().y) + 3.14
 			local x, y = scrw/2 + math.cos(ang) * scrh/6, scrh/2 + math.sin(ang) * scrh/6
 			
-			surface.SetDrawColor(255, 255, 255, decay)
+            if lp:Armor() > 0 then
+                surface.SetDrawColor(119, 119, 255, decay)
+            else
+                surface.SetDrawColor(255, 255, 255, decay)
+            end
 			surface.SetMaterial(matgothit)
 			surface.DrawTexturedRectRotated(x, y, scrh/14, scrh/14, math.deg(-ang) - 90)
 		end
