@@ -13,7 +13,7 @@ if SERVER then
 
         if !ent.phm_lastHealth then if ent:Health() <= 0 then return end elseif ent.phm_lastHealth <= 0 then return end
 
-        if took and IsValid(ent) and (IsValid(attacker) and attacker:IsPlayer()) then
+        if took and IsValid(ent) and IsValid(attacker) and attacker:IsPlayer() then
             local distance = ent:GetPos():Distance(attacker:GetPos())
 
             -- if distance > longrangeshot blabla give more moneys                     btw and check if ent is player because everyone can kill static npcs on long range
@@ -181,8 +181,8 @@ else
 
             if armorBreak then
                 surface.SetDrawColor(119, 119, 255, decay)
-                if lp:Armor() <= 0 then
-                    surface.SetMaterial(matarmorbreak)
+                if lp:Armor() > 0 then
+                    surface.SetMaterial(matarmorhit)
                 else
                     surface.SetMaterial(matarmorhit)
                 end
