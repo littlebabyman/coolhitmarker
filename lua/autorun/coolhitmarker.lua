@@ -1,6 +1,6 @@
 -- if engine.ActiveGamemode() != "sandbox" then return end
-local longrangeshot = 3937/2 -- 50m
-local extralongrangeshot = 3937/2 * 3 -- 150m
+local longrangeshot = 3937 * 0.5 -- 50m
+local extralongrangeshot = 3937 * 1.5 -- 150m
 
 if SERVER then
     util.AddNetworkString("profiteers_hitmark")
@@ -58,7 +58,7 @@ if SERVER then
 
         -- I stole this from Hit Numbers because it works
         
-        if not target:IsValid() then return end
+        if !target:IsValid() then return end
         if target:GetCollisionGroup() == COLLISION_GROUP_DEBRIS then return end
         
         target.phm_lastHealth = target:Health() or 0
@@ -80,6 +80,7 @@ else
     local lasthmhead = false
     local lasthmkill = false
     local lasthmprop = false
+    local lasthmfire = false
     local hmmat = Material("profiteers/hitmark.png", "noclamp smooth")
     local hmmat2 = Material("profiteers/headmark.png", "noclamp smooth")
     local hmmat3 = Material("profiteers/hitprop.png", "noclamp smooth")
@@ -89,7 +90,7 @@ else
     local matgothit = Material("profiteers/hiteffect.png", "noclamp smooth")
 
     hook.Add("HUDPaint", "profiteers_hitmark_paint", function()
-        if not hm then return end
+        if !hm then return end
         local lp = LocalPlayer()
         local ct = CurTime()
 		local scrw, scrh = ScrW(), ScrH()
@@ -120,7 +121,7 @@ else
                 surface.SetMaterial(matgear)
 				surface.DrawTexturedRect(scrw / 2 + 96, scrh / 2 -12, 24, 24)
 			end
-			if lasthmarmor == 1 or lasthmprop then -- prop damage
+			if lasthmfire then -- prop damage
                 surface.SetMaterial(matgear)
 				surface.DrawTexturedRect(scrw / 2 - 12, scrh / 2 + 96, 24, 24)
 			end
@@ -192,7 +193,7 @@ else
         lasthm = ct + hmlength
 
         timer.Simple(0.1, function()
-            if not IsValid(lp) then return end -- just to be sure
+            if !lp then return end -- just to be sure
 
             -- juicer when many dmg
             for i = 1, math.Clamp(math.ceil(dmg / 40), 1, 4) do
@@ -206,7 +207,7 @@ else
 
                 if killed then
                     timer.Simple(0.15, function()
-                        if not IsValid(lp) then return end -- just to be sure
+                        if !IsValid(lp) then return end -- just to be sure
 
                         for i = 1, 3 do
                             surface.PlaySound("profiteers/killmarker.wav")
