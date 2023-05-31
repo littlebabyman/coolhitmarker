@@ -220,7 +220,7 @@ else
         lasthm = ct + hmlength
 
         if armored == 1 then -- seperate armor break sond without delay
-            surface.PlaySound("profiteers/breakarmor3.wav")
+            surface.PlaySound("profiteers/breakarmorr.wav")
         end
 
         timer.Simple(0.06, function()
@@ -258,9 +258,12 @@ else
 
         local hitVec =  attacker:GetPos() - lp:GetPos()
 
-        if armor and lp:Armor() <= 0 then
-            -- timer.Simple(0.1, function() surface.PlaySound("player/headshot" .. math.random(2) .. ".wav") end)
-            timer.Simple(0.1, function() surface.PlaySound("profiteers/breakarmor3.wav") end)
+        if armor then
+            timer.Simple(0.1, function() 
+                if lp:Armor() <= 0 then
+                    surface.PlaySound("profiteers/breakarmorself.wav")
+                end
+            end)
         end
 
         table.insert(hitindicators, {
