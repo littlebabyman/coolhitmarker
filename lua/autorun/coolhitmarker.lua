@@ -1,5 +1,5 @@
-if engine.ActiveGamemode() != "sandbox" then return end
-local longrangeshot = 3937/2 -- 50m
+-- if engine.ActiveGamemode() != "sandbox" then return end
+local longrangeshot = 3937/10 -- 50m
 local extralongrangeshot = 3937/2 * 3 -- 150m
 
 if SERVER then
@@ -10,12 +10,16 @@ if SERVER then
 
     local function hitmark(ent, dmginfo, took)
         local attacker = dmginfo:GetAttacker()
-
-        if ent.phm_lastHealth == nil then
-            if ent:Health() <= 0 then return end
-        else
-            if ent.phm_lastHealth <= 0 then return end
+        if GetConVar("developer"):GetBool() and attacker and attacker:IsPlayer() then
+            print("Attacker: " .. (attacker:Nick() or attacker) .. "  Victim: " .. (ent:GetClass() or "unknown") .. "  Last recorded HP: " .. (ent.phm_lastHealth or 0) .. "  Current HP: " .. ent:Health())
+            if ent:IsPlayer() then
+                attacker:PrintMessage(HUD_PRINTCENTER, "Victim: " .. (ent:Nick() or "player" .. ent:EntIndex()) .. "\nDamage taken: " .. dmginfo:GetDamage() .. "\nLast recorded Armor: " .. (ent.phm_lastArmor or 0) .. "\nCurrent Armor: " .. ent:Armor() .. "\nLast recorded HP: " .. (ent.phm_lastHealth or 0) .. "\nCurrent HP: " .. ent:Health())
+            else
+                attacker:PrintMessage(HUD_PRINTCENTER, "Victim: " .. (ent:GetClass() or "unknown") .. "\nLast recorded HP: " .. (ent.phm_lastHealth or 0) .. "\nCurrent HP: " .. ent:Health())
+            end
         end
+
+        if !ent.phm_lastHealth then if ent:Health() <= 0 then return end elseif ent.phm_lastHealth <= 0 then return end
 
         if took and IsValid(ent) and IsValid(attacker) and attacker:IsPlayer() then
             local distance = ent:GetPos():Distance(attacker:GetPos())
@@ -28,7 +32,7 @@ if SERVER then
             net.WriteBool(ent:IsPlayer() or ent:IsNextBot() or ent:IsNPC())
             net.WriteBool((ent:IsPlayer() and ent:LastHitGroup() == HITGROUP_HEAD) or ((ent:IsNPC() or ent:IsNextBot()) and npcheadshotted) or false)
             net.WriteBool(((ent:IsPlayer() or ent:IsNextBot() or ent:IsNPC()) and ent:Health() <= 0) or (ent:GetNWInt("PFPropHealth", 1) <= 0) or false)
-            net.WriteBool((ent:IsPlayer() and ent:Armor() > 0) or false)
+            net.WriteUInt((ent:IsPlayer() and (ent:Armor() > 0 and 1 or 0) + (ent.phm_lastArmor > 0 and 1 or 0)) or 0, 2)
             net.WriteUInt(distance, 16)
             net.Send(attacker)
             npcheadshotted = false
@@ -60,22 +64,29 @@ if SERVER then
         -- is a fairly lightweight bandaid fix and overhead should be tiny, especially since an
         -- entity's lua table is serverside only.
 
-        -- I stole this from Hit Numbers
+        -- I stole this from Hit Numbers because it works
         
         if not target:IsValid() then return end
         if target:GetCollisionGroup() == COLLISION_GROUP_DEBRIS then return end
         
-        target.phm_lastHealth = target:Health()
+        target.phm_lastHealth = target:Health() or 0
+        if target:IsPlayer() then target.phm_lastArmor = target:Armor() or 0 end
     end)
 
     hook.Add("PostEntityTakeDamage", "profiteers_hitmarkers", hitmark)
 else
+    local hm = CreateClientConVar("profiteers_hitmarker_enable", "1", true, true, "Enable Profiteers Hitmarker.", 0, 1)
+    local distantshot = CreateClientConVar("profiteers_hitmarker_longshot", "1", true, true, "Show Longshot indicators. 1 for all hits, 2 for kills only.", 0, 2)
+    local hmarmor = CreateClientConVar("profiteers_hitmarker_armor", "1", true, true, "Show armor hit indicators.", 0, 1)
+    local hmhead = CreateClientConVar("profiteers_hitmarker_head", "1", true, true, "Show headshot indicators.", 0, 1)
+    local hmkill = CreateClientConVar("profiteers_hitmarker_kill", "1", true, true, "Show kill indicators.", 0, 1)
+    local hmprop = CreateClientConVar("profiteers_hitmarker_prop", "1", true, true, "Show prop hit indicators.", 0, 1)
     local hmlength = 0.22 -- 0.5 if kill
     local lasthm = 0
     local lastdistantshot = 0
+    local lasthmarmor = 0
     local lasthmhead = false
     local lasthmkill = false
-    local lasthmarmor = false
     local lasthmprop = false
     local hmmat = Material("profiteers/hitmark.png", "noclamp smooth")
     local hmmat2 = Material("profiteers/headmark.png", "noclamp smooth")
@@ -86,6 +97,7 @@ else
     local matgothit = Material("profiteers/hiteffect.png", "noclamp smooth")
 
     hook.Add("HUDPaint", "profiteers_hitmark_paint", function()
+        if not hm then return end
         local lp = LocalPlayer()
         local ct = CurTime()
 		local scrw, scrh = ScrW(), ScrH()
@@ -98,10 +110,9 @@ else
             else
                 surface.SetMaterial(lasthmhead and hmmat2 or hmmat)
             end
-
             if lasthmkill then
                 surface.SetDrawColor(255, 0, 0, 255 * state)
-            elseif lasthmarmor then
+            elseif bit.band(lasthmarmor) > 1 then
                 surface.SetDrawColor(119, 119, 255, 255 * state)
             else
                 surface.SetDrawColor(255, 255, 255, 255 * state)
@@ -109,15 +120,15 @@ else
 
             surface.DrawTexturedRect(scrw / 2 - 18 - 25 * state, scrh / 2 - 18 - 25 * state, 36 + 50 * state, 36 + 50 * state)
 
-			if lasthmprop then -- prop damage
+			if lasthmarmor == 1 or lasthmprop then -- prop damage
                 surface.SetMaterial(matgear)
 				surface.DrawTexturedRect(scrw / 2 + 96, scrh / 2 -12, 24, 24)
 			end
         end
 
-        if lastdistantshot > ct then -- long range hits
+        if distantshot:GetBool() and lastdistantshot > ct then -- long range hits
             local state = (lastdistantshot - ct) * 2
-            local message = (lasthmkill and lasthmhead) and "Long range HEADSHOT!!" or lasthmkill and "Long range kill!" or "Long range hit"
+            local message = distantshot:GetInt() == 1 and (lasthmkill and lasthmhead) and "Long range HEADSHOT!!" or lasthmkill and "Long range kill!" or "Long range hit"
             -- surface.SetFont("CGHUD_7_Shadow")
             surface.SetFont(ARC9 and "ARC9_8_Glow" or "GModNotify")
             surface.SetTextColor(0, 0, 0, 255 * state)
@@ -139,7 +150,7 @@ else
 		for k, v in ipairs(hitindicators) do -- hit indicators
 			local decay = math.max(0, (v.time - ct)) * 30
 
-			if decay <= 0 then 
+			if decay <= 0 then
 				table.remove(hitindicators, k) -- removing old stains
 			end
 
@@ -149,7 +160,7 @@ else
 			
 			surface.SetDrawColor(255, 255, 255, decay)
 			surface.SetMaterial(matgothit)
-			surface.DrawTexturedRectRotated(x, y, scrh/14, scrh/14, math.deg(-ang) - 90)  
+			surface.DrawTexturedRectRotated(x, y, scrh/14, scrh/14, math.deg(-ang) - 90)
 		end
     end)
 
@@ -158,7 +169,7 @@ else
         local isliving = net.ReadBool()
         local head = net.ReadBool()
         local killed = net.ReadBool()
-        local armored = net.ReadBool()
+        local armored = net.ReadUInt(2)
         local distance = net.ReadUInt(16)
         local lp = LocalPlayer()
         local ct = CurTime()
@@ -183,7 +194,7 @@ else
             for i = 1, math.Clamp(math.ceil(dmg / 40), 1, 4) do
                 if head then
                     surface.PlaySound("profiteers/headmarker.wav")
-                elseif armored then
+                elseif armored == 2 then
                     surface.PlaySound("player/kevlar" .. math.random(1, 5) .. ".wav")
                 else
                     surface.PlaySound("profiteers/mwhitmarker.wav")
