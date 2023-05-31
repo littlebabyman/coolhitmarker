@@ -34,7 +34,7 @@ if SERVER then
         if took and IsValid(ent) and IsValid(attacker) and ent:IsPlayer() then -- hit indicators
             net.Start("profiteers_gothit")
             net.WriteEntity(dmginfo:GetInflictor())
-            net.WriteBool(ent.phm_lastArmor > 0 or false)
+            net.WriteUInt((ent:Armor() > 0 and 1 or 0) + (ent.phm_lastArmor > 0 and 1 or 0) or 0, 2)
             net.Send(ent)
         end
     end
@@ -103,7 +103,6 @@ else
     local matarmorbreak = Material("profiteers/hiteffectarmorbroken.png", "noclamp smooth")
 
     hook.Add("HUDPaint", "profiteers_hitmark_paint", function()
-        if !hm:GetBool() then return end
         local lp = LocalPlayer()
         local ct = CurTime()
         local scrw, scrh = ScrW(), ScrH()
@@ -180,9 +179,9 @@ else
                 local ang = math.atan2(hitVec.x, hitVec.y) + math.rad(lp:EyeAngles().y) + 3.14
                 local x, y = scrw/2 + math.cos(ang) * scrh/6, scrh/2 + math.sin(ang) * scrh/6
 
-                if armorBreak then
+                if armorBreak > 0 then
                     surface.SetDrawColor(119, 119, 255, decay)
-                    if lp:Armor() > 0 then
+                    if bit.band(armorBreak) == 2 then
                         surface.SetMaterial(matarmorhit)
                     else
                         surface.SetMaterial(matarmorbreak)
@@ -197,6 +196,7 @@ else
     end)
 
     local function hitmarker()
+        if !hm:GetBool() then return end
         local dmg = net.ReadUInt(16)
         local isliving = net.ReadBool()
         local head = net.ReadBool()
@@ -260,9 +260,9 @@ else
 
         local hitVec =  attacker:GetPos() - lp:GetPos()
 
-        if armor then
+        if armor > 0 then
             timer.Simple(0.1, function() 
-                if lp:Armor() <= 0 then
+                if armor == 1 then
                     surface.PlaySound("profiteers/breakarmorself.wav")
                 end
             end)
@@ -275,5 +275,5 @@ else
         })
     end
 
-    net.Receive("profiteers_gothit", function() addgothit(net.ReadEntity(), net.ReadBool()) end)
+    net.Receive("profiteers_gothit", function() addgothit(net.ReadEntity(), net.ReadUInt(2)) end)
 end
