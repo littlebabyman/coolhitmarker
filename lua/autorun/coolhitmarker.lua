@@ -74,11 +74,12 @@ if SERVER then
     hook.Add("PostEntityTakeDamage", "profiteers_hitmarkers", hitmark)
 else
     local hm = CreateClientConVar("profiteers_hitmarker_enable", "1", true, true, "Enable Profiteers Hitmarker.", 0, 1)
+    local indicators = CreateClientConVar("profiteers_dmgindicator_enable", "1", true, true, "Enable Profiteers Damage indicators.", 0, 1)
     local distantshot = CreateClientConVar("profiteers_hitmarker_longshot", "1", true, true, "Show Longshot indicators. 1 for all hits, 2 for kills only.", 0, 2)
     local hmarmor = CreateClientConVar("profiteers_hitmarker_armor", "1", true, true, "Show armor hit indicators.", 0, 1)
     local hmhead = CreateClientConVar("profiteers_hitmarker_head", "1", true, true, "Show headshot indicators.", 0, 1)
     local hmkill = CreateClientConVar("profiteers_hitmarker_kill", "1", true, true, "Show kill indicators.", 0, 1)
-    local hmprop = CreateClientConVar("profiteers_hitmarker_prop", "1", true, true, "Show prop hit indicators.", 0, 1)
+    local hmprop = CreateClientConVar("profiteers_hitmarker_prop", "1", true, true, "Show prop (and other breakable entites) hit indicators.", 0, 1)
     local hmlength = 0.22 -- 0.5 if kill
     local lasthm = 0
     local lastdistantshot = 0
@@ -102,7 +103,7 @@ else
     local matarmorbreak = Material("profiteers/hiteffectarmorbroken.png", "noclamp smooth")
 
     hook.Add("HUDPaint", "profiteers_hitmark_paint", function()
-        if !hm then return end
+        if !hm:GetBool() then return end
         local lp = LocalPlayer()
         local ct = CurTime()
         local scrw, scrh = ScrW(), ScrH()
@@ -166,32 +167,33 @@ else
             surface.DrawText(lasthmdistance .. " m")
         end
 
+        if indicators:GetBool() then
+            for k, v in ipairs(hitindicators) do -- hit indicators
+                local decay = math.max(0, (v.time - ct)) * 30
 
-        for k, v in ipairs(hitindicators) do -- hit indicators
-            local decay = math.max(0, (v.time - ct)) * 30
-
-            if decay <= 0 then
-                table.remove(hitindicators, k) -- removing old stains
-            end
-
-            local hitVec = v.hitvec
-            local armorBreak = v.armor
-            local ang = math.atan2(hitVec.x, hitVec.y) + math.rad(lp:EyeAngles().y) + 3.14
-            local x, y = scrw/2 + math.cos(ang) * scrh/6, scrh/2 + math.sin(ang) * scrh/6
-
-            if armorBreak then
-                surface.SetDrawColor(119, 119, 255, decay)
-                if lp:Armor() > 0 then
-                    surface.SetMaterial(matarmorhit)
-                else
-                    surface.SetMaterial(matarmorbreak)
+                if decay <= 0 then
+                    table.remove(hitindicators, k) -- removing old stains
                 end
-            else
-                surface.SetDrawColor(255, 255, 255, decay)
-                surface.SetMaterial(matgothit)
+
+                local hitVec = v.hitvec
+                local armorBreak = v.armor
+                local ang = math.atan2(hitVec.x, hitVec.y) + math.rad(lp:EyeAngles().y) + 3.14
+                local x, y = scrw/2 + math.cos(ang) * scrh/6, scrh/2 + math.sin(ang) * scrh/6
+
+                if armorBreak then
+                    surface.SetDrawColor(119, 119, 255, decay)
+                    if lp:Armor() > 0 then
+                        surface.SetMaterial(matarmorhit)
+                    else
+                        surface.SetMaterial(matarmorbreak)
+                    end
+                else
+                    surface.SetDrawColor(255, 255, 255, decay)
+                    surface.SetMaterial(matgothit)
+                end
+                surface.DrawTexturedRectRotated(x, y, scrh/14, scrh/14, math.deg(-ang) - 90)
             end
-            surface.DrawTexturedRectRotated(x, y, scrh/14, scrh/14, math.deg(-ang) - 90)
-            end
+        end
     end)
 
     local function hitmarker()
