@@ -211,7 +211,7 @@ else
         lasthmarmor = armored
         lasthmdistance = math.Round(distance * 0.0254, 1)
         lasthmprop = !isliving
-        hmlength = killed and 0.5 or 0.22
+        hmlength = (armored == 1 or killed) and 0.5 or 0.22
 
         if isliving and distance > longrangeshot then
             lastdistantshot = ct + 3
@@ -219,7 +219,11 @@ else
 
         lasthm = ct + hmlength
 
-        timer.Simple(0.1, function()
+        if armored == 1 then -- seperate armor break sond without delay
+            surface.PlaySound("profiteers/breakarmor3.wav")
+        end
+
+        timer.Simple(0.06, function()
             if !lp then return end -- just to be sure
 
             -- juicer when many dmg
@@ -228,8 +232,6 @@ else
                     surface.PlaySound("profiteers/headmarker.wav")
                 elseif armored == 2 then
                     surface.PlaySound("player/kevlar" .. math.random(5) .. ".wav")
-                elseif armored == 1 then
-                    surface.PlaySound("player/headshot" .. math.random(2) .. ".wav")
                 else
                     surface.PlaySound("profiteers/mwhitmarker.wav")
                 end
@@ -257,7 +259,8 @@ else
         local hitVec =  attacker:GetPos() - lp:GetPos()
 
         if armor and lp:Armor() <= 0 then
-            surface.PlaySound("player/headshot" .. math.random(2) .. ".wav")
+            -- timer.Simple(0.1, function() surface.PlaySound("player/headshot" .. math.random(2) .. ".wav") end)
+            timer.Simple(0.1, function() surface.PlaySound("profiteers/breakarmor3.wav") end)
         end
 
         table.insert(hitindicators, {
