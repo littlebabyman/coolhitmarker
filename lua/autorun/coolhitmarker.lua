@@ -34,6 +34,7 @@ if SERVER then
         if took and IsValid(ent) and IsValid(attacker) and ent:IsPlayer() then -- hit indicators
             net.Start("profiteers_gothit")
             net.WriteEntity(dmginfo:GetInflictor())
+            net.WriteBool(ent.phm_lastArmor > 0 or false)
             net.Send(ent)
         end
     end
@@ -89,10 +90,16 @@ else
     local hmmat = Material("profiteers/hitmark.png", "noclamp smooth")
     local hmmat2 = Material("profiteers/headmark.png", "noclamp smooth")
     local hmmat3 = Material("profiteers/hitprop.png", "noclamp smooth")
+    local hmmat4 = Material("profiteers/hitmarkdestroyarmor.png", "noclamp smooth")
     local matgear = Material("profiteers/gear.png", "noclamp smooth")
+    local matfire = Material("profiteers/fire.png", "noclamp smooth")
+    local matarmor = Material("profiteers/kevlar.png", "noclamp smooth")
+    local matarmor2 = Material("profiteers/kevlarbroken.png", "noclamp smooth")
 
     local hitindicators = {}
     local matgothit = Material("profiteers/hiteffect.png", "noclamp smooth")
+    local matarmorhit = Material("profiteers/hiteffectarmor.png", "noclamp smooth")
+    local matarmorbreak = Material("profiteers/hiteffectarmorbroken.png", "noclamp smooth")
 
     hook.Add("HUDPaint", "profiteers_hitmark_paint", function()
         if !hm then return end
@@ -118,19 +125,23 @@ else
 
             surface.DrawTexturedRect(scrw / 2 - 18 - 25 * state, scrh / 2 - 18 - 25 * state, 36 + 50 * state, 36 + 50 * state)
 
-            if hmarmor and lasthmarmor == 1 then -- armor damage
+            if hmarmor and lasthmarmor > 0 then
                 surface.SetDrawColor(119, 119, 255, 255 * state)
-                surface.SetMaterial(matgear)
+                if lasthmarmor == 2 then -- armor damage
+                    surface.SetMaterial(matarmor)
+                else
+                    surface.SetMaterial(matarmor2)
+                end
                 surface.DrawTexturedRect(scrw / 2 + 96, scrh / 2 -36, 24, 24)
             end
-            if lasthmprop then -- prop damage
+            if hmprop and lasthmprop then -- prop damage
                 surface.SetDrawColor(255, 255, 255, 255 * state)
                 surface.SetMaterial(matgear)
                 surface.DrawTexturedRect(scrw / 2 + 96, scrh / 2 +12, 24, 24)
             end
             if lasthmfire then -- fire damage
                 surface.SetDrawColor(255, 255, 255, 255 * state)
-                surface.SetMaterial(matgear)
+                surface.SetMaterial(matfire)
                 surface.DrawTexturedRect(scrw / 2 - 12, scrh / 2 + 96, 24, 24)
             end
         end
@@ -164,15 +175,21 @@ else
             end
 
             local hitVec = v.hitvec
+            local armorBreak = v.armor
             local ang = math.atan2(hitVec.x, hitVec.y) + math.rad(lp:EyeAngles().y) + 3.14
             local x, y = scrw/2 + math.cos(ang) * scrh/6, scrh/2 + math.sin(ang) * scrh/6
 
-            if lp:Armor() > 0 then
+            if armorBreak then
                 surface.SetDrawColor(119, 119, 255, decay)
+                if lp:Armor() <= 0 then
+                    surface.SetMaterial(matarmorbreak)
+                else
+                    surface.SetMaterial(matarmorhit)
+                end
             else
                 surface.SetDrawColor(255, 255, 255, decay)
+                surface.SetMaterial(matgothit)
             end
-            surface.SetMaterial(matgothit)
             surface.DrawTexturedRectRotated(x, y, scrh/14, scrh/14, math.deg(-ang) - 90)
             end
     end)
@@ -210,7 +227,9 @@ else
                 if head then
                     surface.PlaySound("profiteers/headmarker.wav")
                 elseif armored == 2 then
-                    surface.PlaySound("player/kevlar" .. math.random(1, 5) .. ".wav")
+                    surface.PlaySound("player/kevlar" .. math.random(5) .. ".wav")
+                elseif armored == 1 then
+                    surface.PlaySound("player/headshot" .. math.random(2) .. ".wav")
                 else
                     surface.PlaySound("profiteers/mwhitmarker.wav")
                 end
@@ -230,18 +249,23 @@ else
 
     net.Receive("profiteers_hitmark", hitmarker)
 
-    local function addgothit(attacker)
+    local function addgothit(attacker, armor)
         local lp = LocalPlayer()
         if !attacker:IsValid() then return end
         local scrw, scrh = ScrW(), ScrH()
 
         local hitVec =  attacker:GetPos() - lp:GetPos()
 
+        if armor and lp:Armor() <= 0 then
+            timer.Simple(0.1, function() surface.PlaySound("player/headshot" .. math.random(2) .. ".wav") end)
+        end
+
         table.insert(hitindicators, {
             time = CurTime() + 3,
-            hitvec = hitVec
+            hitvec = hitVec,
+            armor = armor
         })
     end
 
-    net.Receive("profiteers_gothit", function() addgothit(net.ReadEntity()) end)
+    net.Receive("profiteers_gothit", function() addgothit(net.ReadEntity(), net.ReadBool()) end)
 end
