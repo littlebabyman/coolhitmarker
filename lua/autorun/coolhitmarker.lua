@@ -184,7 +184,7 @@ else
                 if lp:Armor() > 0 then
                     surface.SetMaterial(matarmorhit)
                 else
-                    surface.SetMaterial(matarmorhit)
+                    surface.SetMaterial(matarmorbreak)
                 end
             else
                 surface.SetDrawColor(255, 255, 255, decay)
