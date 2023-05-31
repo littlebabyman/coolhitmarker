@@ -23,6 +23,7 @@ if SERVER then
             net.WriteUInt(dmginfo:GetDamage(), 16)
             net.WriteBool(ent:IsPlayer() or ent:IsNextBot() or ent:IsNPC())
             net.WriteBool((ent:IsPlayer() and ent:LastHitGroup() == HITGROUP_HEAD) or ((ent:IsNPC() or ent:IsNextBot()) and npcheadshotted) or false)
+            net.WriteBool(dmginfo:IsDamageType(DMG_BURN))
             net.WriteBool(((ent:IsPlayer() or ent:IsNextBot() or ent:IsNPC()) and ent:Health() <= 0) or (ent:GetNWInt("PFPropHealth", 1) <= 0) or false)
             net.WriteUInt((ent:IsPlayer() and (ent:Armor() > 0 and 1 or 0) + (ent.phm_lastArmor > 0 and 1 or 0)) or 0, 2)
             net.WriteUInt(distance, 16)
@@ -114,14 +115,17 @@ else
             surface.DrawTexturedRect(scrw / 2 - 18 - 25 * state, scrh / 2 - 18 - 25 * state, 36 + 50 * state, 36 + 50 * state)
 
 			if lasthmarmor == 1 then -- prop damage
+                surface.SetDrawColor(119, 119, 255, 255 * state)
                 surface.SetMaterial(matgear)
-				surface.DrawTexturedRect(scrw / 2 - 108, scrh / 2 -12, 24, 24)
+				surface.DrawTexturedRect(scrw / 2 + 96, scrh / 2 -36, 24, 24)
 			end
 			if lasthmprop then -- prop damage
+                surface.SetDrawColor(255, 255, 255, 255 * state)
                 surface.SetMaterial(matgear)
-				surface.DrawTexturedRect(scrw / 2 + 96, scrh / 2 -12, 24, 24)
+				surface.DrawTexturedRect(scrw / 2 + 96, scrh / 2 +12, 24, 24)
 			end
 			if lasthmfire then -- prop damage
+                surface.SetDrawColor(255, 255, 255, 255 * state)
                 surface.SetMaterial(matgear)
 				surface.DrawTexturedRect(scrw / 2 - 12, scrh / 2 + 96, 24, 24)
 			end
@@ -173,6 +177,7 @@ else
         local dmg = net.ReadUInt(16)
         local isliving = net.ReadBool()
         local head = net.ReadBool()
+        local onfire = net.ReadBool()
         local killed = net.ReadBool()
         local armored = net.ReadUInt(2)
         local distance = net.ReadUInt(16)
@@ -180,6 +185,7 @@ else
         local ct = CurTime()
         if lasthm > ct and lasthmkill then return end
         lasthmhead = head
+        lasthmfire = onfire
         lasthmkill = killed
         lasthmarmor = armored
         lasthmdistance = math.Round(distance * 0.0254, 1)
