@@ -40,10 +40,8 @@ if SERVER then
     end
 
     -- fuck you garry
-    hook.Add("ScaleNPCDamage", "profiteers_hitmarkers_npcheadshots", function(npc, hitgroup, dmginfo)
-        if IsValid(npc) and IsValid(dmginfo:GetAttacker()) and dmginfo:GetAttacker():IsPlayer() and hitgroup == HITGROUP_HEAD then
-            npcheadshotted = true
-        end
+    hook.Add("ScaleNPCDamage", "profiteers_hitmarkers_npcheadshots", function(ent, hitgroup, dmginfo)
+        npcheadshotted = IsValid(ent) and IsValid(dmginfo:GetAttacker()) and dmginfo:GetAttacker():IsPlayer() and hitgroup == HITGROUP_HEAD
     end)
 
     hook.Add("EntityTakeDamage", "profiteers_hitmarkers", function(target, dmginfo)
@@ -61,8 +59,8 @@ if SERVER then
         if !target:IsValid() then return end
         if target:GetCollisionGroup() == COLLISION_GROUP_DEBRIS then return end
 
-        target.phm_lastHealth = target:Health() or 0
-        if dmginfo:GetAttacker():IsPlayer() then target.phm_lastAttacker = dmginfo:GetAttacker() end
+        target.phm_lastHealth = target:GetMaxHealth() == 0 and 1 or target:Health() or 0
+        if dmginfo:GetAttacker():IsPlayer() and dmginfo:IsDamageType(DMG_BURN) then target.phm_lastAttacker = dmginfo:GetAttacker() end
         if target:IsPlayer() then
             target.phm_lastArmor = target:Armor() or 0
         end
