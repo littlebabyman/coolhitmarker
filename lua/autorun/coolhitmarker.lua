@@ -22,17 +22,17 @@ if SERVER then
 
         if !ent.phm_lastHealth then if ent:Health() <= 0 then return end elseif ent.phm_lastHealth <= 0 then return end
 
-        if took and IsValid(ent) and IsValid(attacker) and attacker:IsPlayer() then
+        if IsValid(ent) and IsValid(attacker) and attacker:IsPlayer() then
             local distance = ent:GetPos():Distance(attacker:GetPos())
 
             -- if distance > longrangeshot blabla give more moneys                     btw and check if ent is player because everyone can kill static npcs on long range
             -- if distance > extralongrangeshot blabla give more more moneys and type something in chat about attacker's crazy sniper skills
 
             net.Start("profiteers_hitmark")
-            net.WriteUInt(dmginfo:GetDamage(), 16)
+            net.WriteUInt(took and dmginfo:GetDamage() or 0, 16)
             net.WriteBool(ent:IsPlayer() or ent:IsNextBot() or ent:IsNPC())
             net.WriteBool((ent:IsPlayer() and ent:LastHitGroup() == HITGROUP_HEAD) or ((ent:IsNPC() or ent:IsNextBot()) and npcheadshotted) or false)
-            net.WriteBool(dmginfo:IsDamageType(DMG_BURN) or false)
+            net.WriteBool(dmginfo:GetDamageType() == DMG_BURN+DMG_DIRECT or false)
             net.WriteBool(((ent:IsPlayer() or ent:IsNextBot() or ent:IsNPC()) and ent:Health() <= 0) or (ent:GetNWInt("PFPropHealth", 1) <= 0) or false)
             net.WriteUInt((ent:IsPlayer() and (ent:Armor() > 0 and 1 or 0) + (ent.phm_lastArmor > 0 and 1 or 0)) or 0, 2)
             net.WriteUInt(distance, 16)
@@ -40,7 +40,7 @@ if SERVER then
             npcheadshotted = false
         end
 
-        if took and IsValid(ent) and IsValid(attacker) and ent:IsPlayer() then -- hit indicators
+        if IsValid(ent) and IsValid(attacker) and ent:IsPlayer() then -- hit indicators
             net.Start("profiteers_gothit")
             net.WriteEntity(dmginfo:GetInflictor())
             net.WriteUInt((ent:Armor() > 0 and 1 or 0) + (ent.phm_lastArmor > 0 and 1 or 0) or 0, 2)
@@ -87,6 +87,7 @@ else
     local hmprop = CreateClientConVar("profiteers_hitmarker_prop", "1", true, true, "Show prop (and other breakable entites) hit indicators.", 0, 1)
     local hmlength = 0.22 -- 0.5 if kill
     local lasthm = 0
+    local lasthmdmg = 0
     local lastdistantshot = 0
     local lasthmarmor = 0
     local lasthmhead = false
@@ -115,14 +116,16 @@ else
         if lasthm > ct then -- any hitmarkers
             local state = (lasthm - ct) / hmlength
 
-            if hmprop and lasthmprop or lasthmfire then
+            if hmarmor and lasthmarmor == 1 then
+                surface.SetMaterial(hmmat4)
+            elseif hmprop and lasthmprop or lasthmfire or lasthmdmg <= 0 then
                 surface.SetMaterial(hmmat3)
             else
                 surface.SetMaterial(hmhead and lasthmhead and hmmat2 or hmmat)
             end
             if hmkill and lasthmkill then
                 surface.SetDrawColor(255, 0, 0, 255 * state)
-            elseif hmarmor and bit.band(lasthmarmor) > 1 then
+            elseif hmarmor and lasthmarmor > 0 then
                 surface.SetDrawColor(119, 119, 255, 255 * state)
             else
                 surface.SetDrawColor(255, 255, 255, 255 * state)
@@ -212,6 +215,7 @@ else
         local lp = LocalPlayer()
         local ct = CurTime()
         if lasthm > ct and lasthmkill then return end
+        lasthmdmg = dmg
         lasthmhead = head
         lasthmfire = onfire
         lasthmkill = killed
@@ -235,7 +239,7 @@ else
 
             -- juicer when many dmg
             for i = 1, math.Clamp(math.ceil(dmg / 40), 1, 4) do
-                if head then
+                if !onfire and head then
                     surface.PlaySound("profiteers/headmarker.wav")
                 elseif armored == 2 then
                     surface.PlaySound("player/kevlar" .. math.random(5) .. ".wav")
