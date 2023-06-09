@@ -34,7 +34,7 @@ if SERVER then
         if IsValid(ent) and IsValid(attacker) and ent:IsPlayer() then -- hit indicators
             net.Start("profiteers_gothit")
             net.WriteEntity(dmginfo:GetInflictor())
-            net.WriteUInt((ent:IsPlayer() and ent:Armor() > 0 and 1 or 0) + (ent.phm_lastArmor > 0 and 1 or 0) or 0, 2)
+            net.WriteUInt((ent:IsPlayer() and (ent:Armor() > 0 and 1 or 0) + (ent.phm_lastArmor > 0 and 2 or 0)) or 0, 2)
             net.Send(ent)
         end
     end
