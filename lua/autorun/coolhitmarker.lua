@@ -10,15 +10,6 @@ if SERVER then
 
     local function hitmark(ent, dmginfo, took)
         local attacker = dmginfo:GetAttacker()
-        -- if GetConVar("developer"):GetBool() and attacker and attacker:IsPlayer() then
-        --     if ent:IsPlayer() then
-        --         attacker:PrintMessage(HUD_PRINTCENTER, "Victim: " .. (ent:Nick() or "player" .. ent:EntIndex()) .. "\nDamage type: " .. bit.band(dmginfo:GetDamageType()) .. "\nDamage taken: " .. dmginfo:GetDamage() .. "\nLast recorded Armor: " .. (ent.phm_lastArmor or 0) .. "\nCurrent Armor: " .. ent:Armor() .. "\nLast recorded HP: " .. (ent.phm_lastHealth or 0) .. "\nCurrent HP: " .. ent:Health())
-        --         print("Victim: " .. (ent:Nick() or "player" .. ent:EntIndex()) .. "\nDamage type: " .. bit.band(dmginfo:GetDamageType()) .. "\nDamage taken: " .. dmginfo:GetDamage() .. "\nLast recorded Armor: " .. (ent.phm_lastArmor or 0) .. "\nCurrent Armor: " .. ent:Armor() .. "\nLast recorded HP: " .. (ent.phm_lastHealth or 0) .. "\nCurrent HP: " .. ent:Health())
-        --     else
-        --         attacker:PrintMessage(HUD_PRINTCENTER, "Victim: " .. (ent:GetClass() or "unknown") .. "\nLast recorded HP: " .. (ent.phm_lastHealth or 0) .. "\nCurrent HP: " .. ent:Health())
-        --         print("Victim: " .. (ent:GetClass() or "unknown") .. "\nLast recorded HP: " .. (ent.phm_lastHealth or 0) .. "\nCurrent HP: " .. ent:Health())
-        --     end
-        -- end
 
         if !ent.phm_lastHealth then if ent:Health() <= 0 then return end elseif ent.phm_lastHealth <= 0 then return end
 
