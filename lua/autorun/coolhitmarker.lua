@@ -23,7 +23,7 @@ if SERVER then
             net.WriteUInt(dmginfo:GetDamage(), 16)
             net.WriteBool(ent:IsPlayer() or ent:IsNextBot() or ent:IsNPC())
             net.WriteBool((ent:IsPlayer() and ent:LastHitGroup() == HITGROUP_HEAD) or ((ent:IsNPC() or ent:IsNextBot()) and npcheadshotted) or false)
-            net.WriteBool(dmginfo:GetDamageType() == DMG_BURN+DMG_DIRECT or false)
+            net.WriteBool(bit.band(dmginfo:GetDamageType(), DMG_BURN+DMG_DIRECT) == DMG_BURN+DMG_DIRECT or false)
             net.WriteBool(((ent:IsPlayer() or ent:IsNextBot() or ent:IsNPC()) and ent:Health() <= 0) or (ent:GetNWInt("PFPropHealth", 1) <= 0) or false)
             net.WriteUInt((ent:IsPlayer() and (ent:Armor() > 0 and 1 or 0) + (ent.phm_lastArmor > 0 and 2 or 0)) or 0, 2)
             net.WriteUInt(distance, 16)
@@ -46,15 +46,7 @@ if SERVER then
 
     hook.Add("EntityTakeDamage", "profiteers_hitmarkers", function(target, dmginfo)
 
-        -- This is needed to determine if a player/entity had a health pool
-        -- before being killed. Used in "hdn_onEntDamage" hook.
-
-        -- This is awful, inelegant, and I hate it. But, it does work.
-        -- This solution is temporary until I can find a better way around this. Thankfully, this
-        -- is a fairly lightweight bandaid fix and overhead should be tiny, especially since an
-        -- entity's lua table is serverside only.
-
-        -- I stole this from Hit Numbers because it works
+        -- largely copied idea from hit numbers
         if !target:IsValid() then return end
         if target:GetCollisionGroup() == COLLISION_GROUP_DEBRIS then return end
         if target:IsPlayer() then
@@ -69,13 +61,14 @@ if SERVER then
 
     hook.Add("PostEntityTakeDamage", "profiteers_hitmarkers", hitmark)
 else
-    local hm = CreateClientConVar("profiteers_hitmarker_enable", "1", true, true, "Enable Profiteers Hitmarker.", 0, 1)
+    local hm = CreateClientConVar("profiteers_hitmarker_enable", "1", true, true, "Enable Profiteers Hitmarker.", 0, 3)
     local indicators = CreateClientConVar("profiteers_dmgindicator_enable", "1", true, true, "Enable Profiteers Damage indicators.", 0, 1)
     local distantshot = CreateClientConVar("profiteers_hitmarker_longshot", "1", true, true, "Show Longshot indicators. 1 for all hits, 2 for kills only.", 0, 2)
     local hmarmor = CreateClientConVar("profiteers_hitmarker_armor", "1", true, true, "Show armor hit indicators.", 0, 1)
     local hmhead = CreateClientConVar("profiteers_hitmarker_head", "1", true, true, "Show headshot indicators.", 0, 1)
     local hmkill = CreateClientConVar("profiteers_hitmarker_kill", "1", true, true, "Show kill indicators.", 0, 1)
-    local hmprop = CreateClientConVar("profiteers_hitmarker_prop", "1", true, true, "Show prop (and other breakable entites) hit indicators.", 0, 1)
+    local hmfire = CreateClientConVar("profiteers_hitmarker_fire", "1", true, true, "Show afterburn indicators.", 0, 1)
+    local hmprop = CreateClientConVar("profiteers_hitmarker_prop", "1", true, true, "Show prop (and other breakable entity) hit indicators.", 0, 1)
     local hmlength = 0.22 -- 0.5 if kill
     local lasthm = 0
     local lastdistantshot = 0
@@ -91,14 +84,39 @@ else
     local matgear = Material("profiteers/gear.png", "noclamp smooth")
     local matfire = Material("profiteers/fire.png", "noclamp smooth")
     local matarmor = Material("profiteers/kevlar.png", "noclamp smooth")
-    local matarmor2 = Material("profiteers/kevlarbroken.png", "noclamp smooth")
+    local matarmorb = Material("profiteers/kevlarbroken.png", "noclamp smooth")
+    local matarmor2 = Material("profiteers/kevlar2.png", "noclamp smooth")
+    local matarmorb2 = Material("profiteers/kevlar2broken.png", "noclamp smooth")
 
     local hitindicators = {}
     local matgothit = Material("profiteers/hiteffect.png", "noclamp smooth")
     local matarmorhit = Material("profiteers/hiteffectarmor.png", "noclamp smooth")
     local matarmorbreak = Material("profiteers/hiteffectarmorbroken.png", "noclamp smooth")
-
+    
+    hook.Add("PopulateToolMenu", "profiteers_hitmark_options", function()
+        spawnmenu.AddToolMenuOption("Utilities", "Profiteers", "profiteers_hitmarker", "Hitmarkers", "", "", function(pan)
+            pan:CheckBox("Enable Profiteers Damage indicators", "profiteers_dmgindicator_enable")
+            pan:Help("It's those arrows pointing toward where you were shot from.")
+            local mode = pan:ComboBox("Hitmarker mode", "profiteers_hitmarker_enable")
+            mode:SetSortItems(false)
+            mode:AddChoice("Disabled", 0)
+            mode:AddChoice("Audiovisual", 1)
+            mode:AddChoice("Visual only", 2)
+            mode:AddChoice("Audio only", 3)
+            local long = pan:ComboBox("Longshot indicators", "profiteers_hitmarker_longshot")
+            long:SetSortItems(false)
+            long:AddChoice("Disabled", 0)
+            long:AddChoice("Every hit", 1)
+            long:AddChoice("Kills only", 2)
+            pan:CheckBox("Show armor hit indicators", "profiteers_hitmarker_armor")
+            pan:CheckBox("Show headshot indicators", "profiteers_hitmarker_head")
+            pan:CheckBox("Show kill indicators", "profiteers_hitmarker_kill")
+            pan:CheckBox("Show afterburn indicators", "profiteers_hitmarker_fire")
+            pan:CheckBox("Show prop (and other breakable entity) hit indicators", "profiteers_hitmarker_prop")
+        end)
+    end)
     hook.Add("HUDPaint", "profiteers_hitmark_paint", function()
+        if hm:GetInt() == 3 then return end
         local lp = LocalPlayer()
         local ct = CurTime()
         local scrw, scrh = ScrW(), ScrH()
@@ -106,16 +124,16 @@ else
         if lasthm > ct then -- any hitmarkers
             local state = (lasthm - ct) / hmlength
 
-            if hmarmor and lasthmarmor == 2 then
+            if hmarmor:GetBool() and lasthmarmor == 2 then
                 surface.SetMaterial(hmmat4)
-            elseif hmprop and lasthmprop or lasthmfire then
+            elseif lasthmprop or hmfire:GetBool() and lasthmfire then
                 surface.SetMaterial(hmmat3)
             else
-                surface.SetMaterial(hmhead and lasthmhead and hmmat2 or hmmat)
+                surface.SetMaterial(hmhead:GetBool() and lasthmhead and hmmat2 or hmmat)
             end
-            if hmkill and lasthmkill then
+            if hmkill:GetBool() and lasthmkill then
                 surface.SetDrawColor(255, 0, 0, 255 * state)
-            elseif hmarmor and lasthmarmor > 0 then
+            elseif hmarmor:GetBool() and lasthmarmor > 0 then
                 surface.SetDrawColor(119, 119, 255, 255 * state)
             else
                 surface.SetDrawColor(255, 255, 255, 255 * state)
@@ -123,30 +141,30 @@ else
 
             surface.DrawTexturedRect(scrw / 2 - 18 - 25 * state, scrh / 2 - 18 - 25 * state, 36 + 50 * state, 36 + 50 * state)
 
-            if hmarmor and lasthmarmor > 0 then
+            if hmarmor:GetBool() and lasthmarmor > 0 then
                 surface.SetDrawColor(119, 119, 255, 255 * state)
                 if lasthmarmor == 3 then -- armor damage
                     surface.SetMaterial(matarmor)
                 else
-                    surface.SetMaterial(matarmor2)
+                    surface.SetMaterial(matarmorb)
                 end
-                surface.DrawTexturedRect(scrw / 2 + 96, scrh / 2 -36, 24, 24)
+                surface.DrawTexturedRect(scrw / 2 + 96, scrh / 2 - 36, 24, 24)
             end
-            if hmprop and lasthmprop then -- prop damage
+            if lasthmprop then -- prop damage
                 surface.SetDrawColor(255, 255, 255, 255 * state)
                 surface.SetMaterial(matgear)
-                surface.DrawTexturedRect(scrw / 2 + 96, scrh / 2 +12, 24, 24)
+                surface.DrawTexturedRect(scrw / 2 + 96, scrh / 2 + 12, 24, 24)
             end
-            if lasthmfire then -- fire damage
+            if hmfire:GetBool() and lasthmfire then -- afterburn damage
                 surface.SetDrawColor(255, 255, 255, 255 * state)
                 surface.SetMaterial(matfire)
                 surface.DrawTexturedRect(scrw / 2 - 12, scrh / 2 + 96, 24, 24)
             end
         end
 
-        if distantshot:GetBool() and lastdistantshot > ct then -- long range hits
+        if (distantshot:GetInt() == 2 and lasthmkill or distantshot:GetInt() == 1) and lastdistantshot > ct then -- long range hits
             local state = (lastdistantshot - ct) * 2
-            local message = distantshot:GetInt() == 1 and (lasthmkill and lasthmhead) and "Long range HEADSHOT!!" or lasthmkill and "Long range kill!" or "Long range hit"
+            local message = (lasthmkill and lasthmhead) and "Long range HEADSHOT!!" or lasthmkill and "Long range kill!" or "Long range hit"
             -- surface.SetFont("CGHUD_7_Shadow")
             surface.SetFont(ARC9 and "ARC9_8_Glow" or "GModNotify")
             surface.SetTextColor(0, 0, 0, 255 * state)
@@ -179,10 +197,10 @@ else
 
                 if armorBreak > 0 then
                     surface.SetDrawColor(119, 119, 255, decay)
-                    if bit.band(armorBreak) == 2 then
-                        surface.SetMaterial(matarmorhit)
-                    else
+                    if armorBreak == 2 then
                         surface.SetMaterial(matarmorbreak)
+                    else
+                        surface.SetMaterial(matarmorhit)
                     end
                 else
                     surface.SetDrawColor(255, 255, 255, decay)
@@ -209,18 +227,22 @@ else
         lasthmfire = onfire
         lasthmkill = killed
         lasthmarmor = armored
-        lasthmdistance = math.Round(distance * 0.0254, 1)
         lasthmprop = !isliving
         hmlength = (armored == 2 or killed) and 0.5 or 0.22
 
-        if isliving and distance > longrangeshot then
+        if isliving then
+            if distance > longrangeshot then
+            lasthmdistance = math.Round(distance * 0.0254, 1)
             lastdistantshot = ct + 3
-        end
+            end
+        elseif !hmprop:GetBool() then return end
 
         lasthm = ct + hmlength
 
+        if hm:GetInt() == 2 then return end
+
         if armored == 2 then -- seperate armor break sond without delay
-            surface.PlaySound("profiteers/breakarmorr.wav")
+            surface.PlaySound("profiteers/breakarmorr.ogg")
         end
 
         timer.Simple(0.06, function()
@@ -229,11 +251,11 @@ else
             -- juicer when many dmg
             for i = 1, math.Clamp(math.ceil(dmg / 40), 1, 4) do
                 if !onfire and head then
-                    surface.PlaySound("profiteers/headmarker.wav")
+                    surface.PlaySound("profiteers/headmarker.ogg")
                 elseif armored == 3 then
                     surface.PlaySound("player/kevlar" .. math.random(5) .. ".wav")
                 else
-                    surface.PlaySound("profiteers/mwhitmarker.wav")
+                    surface.PlaySound("profiteers/mwhitmarker.ogg")
                 end
 
                 if killed then
@@ -241,7 +263,7 @@ else
                         if !IsValid(lp) then return end -- just to be sure
 
                         for i = 1, 3 do
-                            surface.PlaySound("profiteers/killmarker.wav")
+                            surface.PlaySound("profiteers/killmarker.ogg")
                         end
                     end)
                 end
@@ -258,12 +280,8 @@ else
 
         local hitVec =  attacker:GetPos() - lp:GetPos()
 
-        if armor > 0 then
-            timer.Simple(0.1, function() 
-                if armor == 1 then
-                    surface.PlaySound("profiteers/breakarmorself.wav")
-                end
-            end)
+        if armor == 2 then
+            surface.PlaySound("profiteers/breakarmorself.ogg")
         end
 
         table.insert(hitindicators, {
