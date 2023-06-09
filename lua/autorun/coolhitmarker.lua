@@ -29,12 +29,12 @@ if SERVER then
             -- if distance > extralongrangeshot blabla give more more moneys and type something in chat about attacker's crazy sniper skills
 
             net.Start("profiteers_hitmark")
-            net.WriteUInt(took and dmginfo:GetDamage() or 0, 16)
+            net.WriteUInt(dmginfo:GetDamage(), 16)
             net.WriteBool(ent:IsPlayer() or ent:IsNextBot() or ent:IsNPC())
             net.WriteBool((ent:IsPlayer() and ent:LastHitGroup() == HITGROUP_HEAD) or ((ent:IsNPC() or ent:IsNextBot()) and npcheadshotted) or false)
             net.WriteBool(dmginfo:GetDamageType() == DMG_BURN+DMG_DIRECT or false)
             net.WriteBool(((ent:IsPlayer() or ent:IsNextBot() or ent:IsNPC()) and ent:Health() <= 0) or (ent:GetNWInt("PFPropHealth", 1) <= 0) or false)
-            net.WriteUInt((ent:IsPlayer() and (ent:Armor() > 0 and 1 or 0) + (ent.phm_lastArmor > 0 and 1 or 0)) or 0, 2)
+            net.WriteUInt((ent:IsPlayer() and (ent:Armor() > 0 and 1 or 0) + (ent.phm_lastArmor > 0 and 2 or 0)) or 0, 2)
             net.WriteUInt(distance, 16)
             net.Send(attacker)
             npcheadshotted = false
@@ -87,7 +87,6 @@ else
     local hmprop = CreateClientConVar("profiteers_hitmarker_prop", "1", true, true, "Show prop (and other breakable entites) hit indicators.", 0, 1)
     local hmlength = 0.22 -- 0.5 if kill
     local lasthm = 0
-    local lasthmdmg = 0
     local lastdistantshot = 0
     local lasthmarmor = 0
     local lasthmhead = false
@@ -118,7 +117,7 @@ else
 
             if hmarmor and lasthmarmor == 1 then
                 surface.SetMaterial(hmmat4)
-            elseif hmprop and lasthmprop or lasthmfire or lasthmdmg <= 0 then
+            elseif hmprop and lasthmprop or lasthmfire then
                 surface.SetMaterial(hmmat3)
             else
                 surface.SetMaterial(hmhead and lasthmhead and hmmat2 or hmmat)
@@ -135,7 +134,7 @@ else
 
             if hmarmor and lasthmarmor > 0 then
                 surface.SetDrawColor(119, 119, 255, 255 * state)
-                if lasthmarmor == 2 then -- armor damage
+                if lasthmarmor == 3 then -- armor damage
                     surface.SetMaterial(matarmor)
                 else
                     surface.SetMaterial(matarmor2)
@@ -215,14 +214,13 @@ else
         local lp = LocalPlayer()
         local ct = CurTime()
         if lasthm > ct and lasthmkill then return end
-        lasthmdmg = dmg
         lasthmhead = head
         lasthmfire = onfire
         lasthmkill = killed
         lasthmarmor = armored
         lasthmdistance = math.Round(distance * 0.0254, 1)
         lasthmprop = !isliving
-        hmlength = (armored == 1 or killed) and 0.5 or 0.22
+        hmlength = (armored == 2 or killed) and 0.5 or 0.22
 
         if isliving and distance > longrangeshot then
             lastdistantshot = ct + 3
@@ -230,7 +228,7 @@ else
 
         lasthm = ct + hmlength
 
-        if armored == 1 then -- seperate armor break sond without delay
+        if armored == 2 then -- seperate armor break sond without delay
             surface.PlaySound("profiteers/breakarmorr.wav")
         end
 
@@ -241,7 +239,7 @@ else
             for i = 1, math.Clamp(math.ceil(dmg / 40), 1, 4) do
                 if !onfire and head then
                     surface.PlaySound("profiteers/headmarker.wav")
-                elseif armored == 2 then
+                elseif armored == 3 then
                     surface.PlaySound("player/kevlar" .. math.random(5) .. ".wav")
                 else
                     surface.PlaySound("profiteers/mwhitmarker.wav")
