@@ -115,7 +115,7 @@ else
         if lasthm > ct then -- any hitmarkers
             local state = (lasthm - ct) / hmlength
 
-            if hmarmor and lasthmarmor == 1 then
+            if hmarmor and lasthmarmor == 2 then
                 surface.SetMaterial(hmmat4)
             elseif hmprop and lasthmprop or lasthmfire then
                 surface.SetMaterial(hmmat3)
