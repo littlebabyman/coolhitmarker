@@ -94,8 +94,8 @@ else
     local matarmorbreak = Material("profiteers/hiteffectarmorbroken.png", "noclamp smooth")
     
     hook.Add("PopulateToolMenu", "profiteers_hitmark_options", function()
-        spawnmenu.AddToolMenuOption("Utilities", "Profiteers", "profiteers_hitmarker", "Hitmarkers", "", "", function(pan)
-            pan:CheckBox("Enable Profiteers Damage indicators", "profiteers_dmgindicator_enable")
+        spawnmenu.AddToolMenuOption("Utilities", "User", "profiteers_hitmarker", "Hitmarkers", "", "", function(pan)
+            pan:CheckBox("Enable directional damage indicators", "profiteers_dmgindicator_enable")
             pan:Help("It's those arrows pointing toward where you were shot from.")
             local mode = pan:ComboBox("Hitmarker mode", "profiteers_hitmarker_enable")
             mode:SetSortItems(false)
