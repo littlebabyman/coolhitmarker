@@ -11,7 +11,7 @@ if SERVER then
     local function hitmark(ent, dmginfo, took)
         local attacker = dmginfo:GetAttacker()
 
-        if dmginfo:GetInflictor() == ent then return end
+        if dmginfo:GetInflictor() == ent or attacker == ent then return end
         if !ent.phm_lastHealth then if ent:Health() <= 0 then return end elseif ent.phm_lastHealth <= 0 then return end
 
         if IsValid(ent) and IsValid(attacker) and attacker:IsPlayer() then
