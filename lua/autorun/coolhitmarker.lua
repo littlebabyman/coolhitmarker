@@ -65,15 +65,15 @@ if SERVER then
 else
     local hm = CreateClientConVar("profiteers_hitmarker_enable", "1", true, true, "Enable Profiteers Hitmarker.", 0, 3)
     local hmpos = CreateClientConVar("profiteers_hitmarker_dynamic", "1", true, true, "Use dynamic ''real'' position for hit markers.", 0, 1)
-    local hmscale = CreateClientConVar("profiteers_hitmarker_scale", "1", true, true, "Show Longshot markers. 1 for all hits, 2 for kills only.", 0.25, 2.5)
+    local hmscale = CreateClientConVar("profiteers_hitmarker_scale", "1", true, true, "Show Longshot indicators. 1 for all hits, 2 for kills only.", 0.25, 2.5)
     local indicators = CreateClientConVar("profiteers_dmgindicator_enable", "1", true, true, "Enable Profiteers Damage indicators.", 0, 1)
     local indicatorscale = CreateClientConVar("profiteers_dmgindicator_scale", "1", true, true, "Custom scaling for Profiteers damage indicators.", 0.25, 2.5)
-    local distantshot = CreateClientConVar("profiteers_hitmarker_longshot", "1", true, true, "Show Longshot markers. 1 for all hits, 2 for kills only.", 0, 2)
-    local hmarmor = CreateClientConVar("profiteers_hitmarker_armor", "1", true, true, "Show armor hit markers.", 0, 1)
-    local hmhead = CreateClientConVar("profiteers_hitmarker_head", "1", true, true, "Show headshot markers.", 0, 1)
-    local hmkill = CreateClientConVar("profiteers_hitmarker_kill", "1", true, true, "Show kill markers.", 0, 1)
-    local hmfire = CreateClientConVar("profiteers_hitmarker_fire", "1", true, true, "Show afterburn markers.", 0, 1)
-    local hmprop = CreateClientConVar("profiteers_hitmarker_prop", "1", true, true, "Show prop (and other breakable entity) hit markers.", 0, 1)
+    local distantshot = CreateClientConVar("profiteers_hitmarker_longshot", "1", true, true, "Show Longshot indicators. 1 for all hits, 2 for kills only.", 0, 2)
+    local hmarmor = CreateClientConVar("profiteers_hitmarker_armor", "1", true, true, "Show armor hit indicators.", 0, 1)
+    local hmhead = CreateClientConVar("profiteers_hitmarker_head", "1", true, true, "Show headshot indicators.", 0, 1)
+    local hmkill = CreateClientConVar("profiteers_hitmarker_kill", "1", true, true, "Show kill indicators.", 0, 1)
+    local hmfire = CreateClientConVar("profiteers_hitmarker_fire", "1", true, true, "Show afterburn indicators.", 0, 1)
+    local hmprop = CreateClientConVar("profiteers_hitmarker_prop", "1", true, true, "Show prop (and other breakable entity) hit indicators.", 0, 1)
     local hmlength = 0.22 -- 0.5 if kill
     local lasthm = 0
     local lastdistantshot = 0
@@ -102,9 +102,6 @@ else
     
     hook.Add("PopulateToolMenu", "profiteers_hitmark_options", function()
         spawnmenu.AddToolMenuOption("Utilities", "User", "profiteers_hitmarker", "Hitmarkers", "", "", function(pan)
-            pan:CheckBox("Enable directional damage indicators", "profiteers_dmgindicator_enable")
-            pan:NumSlider("Damage indicator scale", "profiteers_dmgindicator_scale", 0.25, 2.5, 3)
-            pan:Help("It's those arrows pointing toward where you were shot from.")
             local mode = pan:ComboBox("Hitmarker mode", "profiteers_hitmarker_enable")
             mode:SetSortItems(false)
             mode:AddChoice("Disabled", 0)
@@ -123,6 +120,10 @@ else
             pan:CheckBox("Show kill indicators", "profiteers_hitmarker_kill")
             pan:CheckBox("Show afterburn indicators", "profiteers_hitmarker_fire")
             pan:CheckBox("Show prop (and other breakable entity) hit indicators", "profiteers_hitmarker_prop")
+            pan:ControlHelp("")
+            pan:CheckBox("Enable directional damage indicators", "profiteers_dmgindicator_enable")
+            pan:NumSlider("Damage indicator scale", "profiteers_dmgindicator_scale", 0.25, 2.5, 3)
+            pan:Help("It's those arrows pointing toward where you were shot from.")
         end)
     end)
 
