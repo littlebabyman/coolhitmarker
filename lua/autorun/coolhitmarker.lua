@@ -138,7 +138,7 @@ else
         local lp = LocalPlayer()
         local ct = CurTime()
         local scrw, scrh = ScrW(), ScrH()
-        local pos = lasthmtbl
+        local x, y = math.Clamp(lasthmtbl.x, DoSize(24), scrw - DoSize(24)), math.Clamp(lasthmtbl.y, DoSize(24), scrh - DoSize(24))
 
         if lasthm > ct then -- any hitmarkers
             local state = (lasthm - ct) / hmlength
@@ -158,7 +158,7 @@ else
                 surface.SetDrawColor(255, 255, 255, 255 * state)
             end
 
-            surface.DrawTexturedRect(pos.x - DoSize(6) - DoSize(8) * state, pos.y - DoSize(6) - DoSize(8) * state, DoSize(12) + DoSize(16) * state, DoSize(12) + DoSize(16) * state)
+            surface.DrawTexturedRect(x - DoSize(6) - DoSize(8) * state, y - DoSize(6) - DoSize(8) * state, DoSize(12) + DoSize(16) * state, DoSize(12) + DoSize(16) * state)
 
             if hmarmor:GetBool() and lasthmarmor > 0 then
                 surface.SetDrawColor(119, 119, 255, 255 * state)
@@ -167,17 +167,17 @@ else
                 else
                     surface.SetMaterial(matarmorb)
                 end
-                surface.DrawTexturedRect(pos.x + DoSize(16), pos.y - DoSize(12), DoSize(8), DoSize(8))
+                surface.DrawTexturedRect(x + DoSize(16), y - DoSize(12), DoSize(8), DoSize(8))
             end
             if lasthmprop then -- prop damage
                 surface.SetDrawColor(255, 255, 255, 255 * state)
                 surface.SetMaterial(matgear)
-                surface.DrawTexturedRect(pos.x + DoSize(16), pos.y + DoSize(4), DoSize(8), DoSize(8))
+                surface.DrawTexturedRect(x + DoSize(16), y + DoSize(4), DoSize(8), DoSize(8))
             end
             if hmfire:GetBool() and lasthmfire then -- afterburn damage
                 surface.SetDrawColor(255, 255, 255, 255 * state)
                 surface.SetMaterial(matfire)
-                surface.DrawTexturedRect(pos.x - DoSize(4), pos.y + DoSize(16), DoSize(8), DoSize(8))
+                surface.DrawTexturedRect(x - DoSize(4), y + DoSize(16), DoSize(8), DoSize(8))
             end
         end
 
