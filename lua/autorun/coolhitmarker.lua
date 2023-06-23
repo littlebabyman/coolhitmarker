@@ -101,7 +101,7 @@ else
     local matarmorbreak = Material("profiteers/hiteffectarmorbroken.png", "noclamp smooth")
     
     hook.Add("PopulateToolMenu", "profiteers_hitmark_options", function()
-        spawnmenu.AddToolMenuOption("Utilities", "User", "profiteers_hitmarker", "Hitmarkers", "", "", function(pan)
+        spawnmenu.AddToolMenuOption("Utilities", "User", "profiteers_hitmarker", "Cool Hitmarkers", "", "", function(pan)
             local mode = pan:ComboBox("Hitmarker mode", "profiteers_hitmarker_enable")
             mode:SetSortItems(false)
             mode:AddChoice("Disabled", 0)
@@ -138,7 +138,7 @@ else
         local lp = LocalPlayer()
         local ct = CurTime()
         local scrw, scrh = ScrW(), ScrH()
-        local x, y = math.Clamp(lasthmtbl.x, DoSize(24), scrw - DoSize(24)), math.Clamp(lasthmtbl.y, DoSize(24), scrh - DoSize(24))
+        local x, y = 0 < lasthmtbl.x and lasthmtbl.x < scrw and lasthmtbl.x or scrw * 0.5, 0 < lasthmtbl.y and lasthmtbl.y < scrh and lasthmtbl.y or scrh * 0.5
 
         if lasthm > ct then -- any hitmarkers
             local state = (lasthm - ct) / hmlength
