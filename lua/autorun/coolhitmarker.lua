@@ -189,7 +189,7 @@ else
             surface.SetTextColor(0, 0, 0, 255 * state)
             surface.SetTextPos(scrw * 0.5 + DoSize(25) + 1, scrh * 0.5 + 1)
             surface.DrawText(message)
-            surface.SetTextPos(scrw * 0.5 + DoSize(25) + 1, scrh * 0.5 + DoSize(7, 1) + 1)
+            surface.SetTextPos(scrw * 0.5 + DoSize(25) + 1, scrh * 0.5 + 20 + 1)
             surface.DrawText(lasthmdistance .. " m")
             -- surface.SetFont("CGHUD_7")
             surface.SetFont(ARC9 and "ARC9_8" or "GModNotify")
@@ -197,7 +197,7 @@ else
             surface.SetTextPos(scrw * 0.5 + DoSize(25), scrh * 0.5)
             surface.DrawText(message)
             surface.SetTextColor(300 - 255 * (lasthmdistance / 400), 300 - 255 * (lasthmdistance / 400), 255, 255 * state)
-            surface.SetTextPos(scrw * 0.5 + DoSize(25), scrh * 0.5 + DoSize(7, 1))
+            surface.SetTextPos(scrw * 0.5 + DoSize(25), scrh * 0.5 + 20)
             surface.DrawText(lasthmdistance .. " m")
         end
 
