@@ -75,6 +75,7 @@ else
     local hmfire = CreateClientConVar("profiteers_hitmarker_fire", "1", true, true, "Show afterburn indicators.", 0, 1)
     local hmprop = CreateClientConVar("profiteers_hitmarker_prop", "1", true, true, "Show prop (and other breakable entity) hit indicators.", 0, 1)
     local hmlength = 0.22 -- 0.5 if kill
+    local hmrotata = 0
     local lasthm = 0
     local lastdistantshot = 0
     local lasthmpos = Vector()
@@ -142,6 +143,8 @@ else
 
         if lasthm > ct then -- any hitmarkers
             local state = (lasthm - ct) / hmlength
+            -- hmrotata = math.max(0, hmrotata - FrameTime()*300)
+            hmrotata = Lerp(FrameTime()*25, hmrotata, 0)
 
             if hmarmor:GetBool() and lasthmarmor == 2 then
                 surface.SetMaterial(hmmat4)
@@ -158,7 +161,8 @@ else
                 surface.SetDrawColor(255, 255, 255, 255 * state)
             end
 
-            surface.DrawTexturedRect(x - DoSize(6) - DoSize(8) * state, y - DoSize(6) - DoSize(8) * state, DoSize(12) + DoSize(16) * state, DoSize(12) + DoSize(16) * state)
+            -- surface.DrawTexturedRect(x - DoSize(6) - DoSize(8) * state, y - DoSize(6) - DoSize(8) * state, DoSize(12) + DoSize(16) * state, DoSize(12) + DoSize(16) * state)
+            surface.DrawTexturedRectRotated(x, y, DoSize(12) + DoSize(16) * state, DoSize(12) + DoSize(16) * state, hmrotata)
 
             if hmarmor:GetBool() and lasthmarmor > 0 then
                 surface.SetDrawColor(119, 119, 255, 255 * state)
@@ -247,6 +251,8 @@ else
         lasthmfire = onfire
         lasthmkill = killed
         lasthmpos = pos
+
+        hmrotata = math.random(-12, 12)
 
         lasthmtbl = {x = ScrW() * 0.5, y = ScrH() * 0.5, visible = false }
 
