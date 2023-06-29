@@ -247,7 +247,9 @@ else
         lasthmfire = onfire
         lasthmkill = killed
         lasthmpos = pos
+        cam.Start3D()
         lasthmtbl = hmpos:GetBool() and lasthmpos != Vector() and pos:ToScreen().visible and pos:ToScreen() or {x = ScrW() * 0.5, y = ScrH() * 0.5, visible = false}
+        cam.End3D()
         lasthmarmor = armored
         lasthmprop = !isliving
         hmlength = (armored == 2 or killed) and 0.5 or 0.22
