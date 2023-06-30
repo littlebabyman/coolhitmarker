@@ -131,7 +131,7 @@ else
     -- hush
     local function DoSize(size, scale) -- scale is 2 bit operator, first bit dimension, second indicator or hitmarker
         scale = scale or 0
-        return size * (bit.band(scale, 1) == 1 and (ScrH() / 480) or ScreenScale(1)) * (bit.band(scale, 2) == 2 and indicatorscale:GetFloat() or hmscale:GetFloat())
+        return size * (bit.band(scale, 1) == 1 and (ScrH() / 480) or (ScrW() / 640)) * (bit.band(scale, 2) == 2 and indicatorscale:GetFloat() or hmscale:GetFloat())
     end
 
     hook.Add("HUDPaint", "profiteers_hitmark_paint", function()
