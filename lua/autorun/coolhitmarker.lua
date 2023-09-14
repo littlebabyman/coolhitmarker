@@ -2,6 +2,21 @@
 local longrangeshot = 3937 * 0.5 -- 50m
 local extralongrangeshot = 3937 * 1.5 -- 150m
 
+local flags = {FCVAR_NOTIFY, FCVAR_ARCHIVE, FCVAR_REPLICATED}
+
+local hm = CreateConVar("profiteers_hitmarker_enable", "1", flags, "Enable Profiteers Hitmarker.", 0, 3)
+local hmpos = CreateConVar("profiteers_hitmarker_dynamic", "1", flags, "Use dynamic ''real'' position for hit markers.", 0, 1)
+local hmscale = CreateConVar("profiteers_hitmarker_scale", "1", flags, "Show Longshot indicators. 1 for all hits, 2 for kills only.", 0.25, 2.5)
+local hmsound = CreateConVar("profiteers_hitmarker_sound", "1", flags, "Play sound effects for hit markers.", 0, 1)
+local indicators = CreateConVar("profiteers_dmgindicator_enable", "0", flags, "Enable Profiteers Damage indicators.", 0, 1)
+local indicatorscale = CreateConVar("profiteers_dmgindicator_scale", "1", flags, "Custom scaling for Profiteers damage indicators.", 0.25, 2.5)
+local distantshot = CreateConVar("profiteers_hitmarker_longshot", "0", flags, "Show Longshot indicators. 1 for all hits, 2 for kills only.", 0, 2)
+local hmarmor = CreateConVar("profiteers_hitmarker_armor", "0", flags, "Show armor hit indicators.", 0, 1)
+local hmhead = CreateConVar("profiteers_hitmarker_head", "1", flags, "Show headshot indicators.", 0, 1)
+local hmkill = CreateConVar("profiteers_hitmarker_kill", "1", flags, "Show kill indicators.", 0, 1)
+local hmfire = CreateConVar("profiteers_hitmarker_fire", "1", flags, "Show afterburn indicators.", 0, 1)
+local hmprop = CreateConVar("profiteers_hitmarker_prop", "1", flags, "Show prop (and other breakable entity) hit indicators.", 0, 1)
+
 if SERVER then
     util.AddNetworkString("profiteers_hitmark")
     util.AddNetworkString("profiteers_gothit")
@@ -63,17 +78,6 @@ if SERVER then
 
     hook.Add("PostEntityTakeDamage", "profiteers_hitmarkers", hitmark)
 else
-    local hm = CreateClientConVar("profiteers_hitmarker_enable", "1", true, true, "Enable Profiteers Hitmarker.", 0, 3)
-    local hmpos = CreateClientConVar("profiteers_hitmarker_dynamic", "1", true, true, "Use dynamic ''real'' position for hit markers.", 0, 1)
-    local hmscale = CreateClientConVar("profiteers_hitmarker_scale", "1", true, true, "Show Longshot indicators. 1 for all hits, 2 for kills only.", 0.25, 2.5)
-    local indicators = CreateClientConVar("profiteers_dmgindicator_enable", "1", true, true, "Enable Profiteers Damage indicators.", 0, 1)
-    local indicatorscale = CreateClientConVar("profiteers_dmgindicator_scale", "1", true, true, "Custom scaling for Profiteers damage indicators.", 0.25, 2.5)
-    local distantshot = CreateClientConVar("profiteers_hitmarker_longshot", "1", true, true, "Show Longshot indicators. 1 for all hits, 2 for kills only.", 0, 2)
-    local hmarmor = CreateClientConVar("profiteers_hitmarker_armor", "1", true, true, "Show armor hit indicators.", 0, 1)
-    local hmhead = CreateClientConVar("profiteers_hitmarker_head", "1", true, true, "Show headshot indicators.", 0, 1)
-    local hmkill = CreateClientConVar("profiteers_hitmarker_kill", "1", true, true, "Show kill indicators.", 0, 1)
-    local hmfire = CreateClientConVar("profiteers_hitmarker_fire", "1", true, true, "Show afterburn indicators.", 0, 1)
-    local hmprop = CreateClientConVar("profiteers_hitmarker_prop", "1", true, true, "Show prop (and other breakable entity) hit indicators.", 0, 1)
     local hmlength = 0.22 -- 0.5 if kill
     local hmrotata = 0
     local lasthm = 0
@@ -100,7 +104,7 @@ else
     local matgothit = Material("profiteers/hiteffect.png", "noclamp smooth")
     local matarmorhit = Material("profiteers/hiteffectarmor.png", "noclamp smooth")
     local matarmorbreak = Material("profiteers/hiteffectarmorbroken.png", "noclamp smooth")
-    
+
     hook.Add("PopulateToolMenu", "profiteers_hitmark_options", function()
         spawnmenu.AddToolMenuOption("Utilities", "User", "profiteers_hitmarker", "Cool Hitmarkers", "", "", function(pan)
             local mode = pan:ComboBox("Hitmarker mode", "profiteers_hitmarker_enable")
@@ -110,6 +114,7 @@ else
             mode:AddChoice("Visual only", 2)
             mode:AddChoice("Audio only", 3)
             pan:NumSlider("Hitmarker scale", "profiteers_hitmarker_scale", 0.25, 2.5, 3)
+            pan:CheckBox("Play sound effect for hitmarkers", "profiteers_hitmarker_sound")
             pan:CheckBox("Use dynamic position for hit markers", "profiteers_hitmarker_dynamic")
             local long = pan:ComboBox("Longshot indicators", "profiteers_hitmarker_longshot")
             long:SetSortItems(false)
@@ -282,12 +287,12 @@ else
 
         if hm:GetInt() == 2 then return end
 
-        if armored == 2 then -- seperate armor break sond without delay
+        if armored == 2 and hmsound:GetBool() then -- seperate armor break sond without delay
             surface.PlaySound("profiteers/breakarmorr.ogg")
         end
 
         timer.Simple(0.06, function()
-            if !lp then return end -- just to be sure
+            if !lp or not hmsound:GetBool() then return end -- just to be sure
 
             -- juicer when many dmg
             for i = 1, math.Clamp(math.ceil(dmg / 40), 1, 4) do
@@ -321,7 +326,7 @@ else
 
         local hitVec =  attacker:GetPos() - lp:GetPos()
 
-        if armor == 2 then
+        if armor == 2 and hmsound:GetBool() then
             surface.PlaySound("profiteers/breakarmorself.ogg")
         end
 
