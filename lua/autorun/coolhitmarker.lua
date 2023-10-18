@@ -2,6 +2,21 @@
 local longrangeshot = 3937 * 0.5 -- 50m
 local extralongrangeshot = 3937 * 1.5 -- 150m
 
+local flags = {FCVAR_NOTIFY, FCVAR_ARCHIVE, FCVAR_REPLICATED}
+
+local hmoverride = CreateConVar("profiteers_override_enabled", "0", flags, "Override Profiteers UI settings.", 0, 1)
+local hmsv = CreateConVar("profiteers_override_hitmarker_enable", "1", flags, "Override Profiteers Hitmarker. 0 disabled, 1 audiovisual, 2 visual only, 3 audio only.", 0, 3)
+local hmpossv = CreateConVar("profiteers_override_hitmarker_dynamic", "1", flags, "Override dynamic ''real'' position for hit markers.", 0, 1)
+local hmscalesv = CreateConVar("profiteers_override_hitmarker_scale", "1", flags, "Override Longshot indicators. 1 for all hits, 2 for kills only.", 0.25, 2.5)
+local indicatorssv = CreateConVar("profiteers_override_dmgindicator_enable", "1", flags, "Override Profiteers Damage indicators.", 0, 1)
+local indicatorscalesv = CreateConVar("profiteers_override_dmgindicator_scale", "1", flags, "Override custom scaling for Profiteers damage indicators.", 0.25, 2.5)
+local distantshotsv = CreateConVar("profiteers_override_hitmarker_longshot", "1", flags, "Override Longshot indicators. 1 for all hits, 2 for kills only.", 0, 2)
+local hmarmorsv = CreateConVar("profiteers_override_hitmarker_armor", "1", flags, "Override armor hit indicators.", 0, 1)
+local hmheadsv = CreateConVar("profiteers_override_hitmarker_head", "1", flags, "Override headshot indicators.", 0, 1)
+local hmkillsv = CreateConVar("profiteers_override_hitmarker_kill", "1", flags, "Override kill indicators.", 0, 1)
+local hmfiresv = CreateConVar("profiteers_override_hitmarker_fire", "1", flags, "Override afterburn indicators.", 0, 1)
+local hmpropsv = CreateConVar("profiteers_override_hitmarker_prop", "1", flags, "Override prop (and other breakable entity) hit indicators.", 0, 1)
+
 if SERVER then
     util.AddNetworkString("profiteers_hitmark")
     util.AddNetworkString("profiteers_gothit")
@@ -63,7 +78,7 @@ if SERVER then
 
     hook.Add("PostEntityTakeDamage", "profiteers_hitmarkers", hitmark)
 else
-    local hm = CreateClientConVar("profiteers_hitmarker_enable", "1", true, true, "Enable Profiteers Hitmarker.", 0, 3)
+    local hm = CreateClientConVar("profiteers_hitmarker_enable", "1", true, true, "Enable Profiteers Hitmarker. 0 disabled, 1 audiovisual, 2 visual only, 3 audio only.", 0, 3)
     local hmpos = CreateClientConVar("profiteers_hitmarker_dynamic", "1", true, true, "Use dynamic ''real'' position for hit markers.", 0, 1)
     local hmscale = CreateClientConVar("profiteers_hitmarker_scale", "1", true, true, "Show Longshot indicators. 1 for all hits, 2 for kills only.", 0.25, 2.5)
     local indicators = CreateClientConVar("profiteers_dmgindicator_enable", "1", true, true, "Enable Profiteers Damage indicators.", 0, 1)
@@ -76,6 +91,7 @@ else
     local hmprop = CreateClientConVar("profiteers_hitmarker_prop", "1", true, true, "Show prop (and other breakable entity) hit indicators.", 0, 1)
     local hmlength = 0.22 -- 0.5 if kill
     local hmrotata = 0
+    local hmauth = 0
     local lasthm = 0
     local lastdistantshot = 0
     local lasthmpos = Vector()
@@ -102,7 +118,8 @@ else
     local matarmorbreak = Material("profiteers/hiteffectarmorbroken.png", "noclamp smooth")
     
     hook.Add("PopulateToolMenu", "profiteers_hitmark_options", function()
-        spawnmenu.AddToolMenuOption("Utilities", "User", "profiteers_hitmarker", "Cool Hitmarkers", "", "", function(pan)
+        spawnmenu.AddToolMenuOption("Utilities", "Cool Hitmarkers", "profiteers_hitmarker_cl", "Client", "", "", function(pan)
+            pan:ControlHelp("\nHitmarkers")
             local mode = pan:ComboBox("Hitmarker mode", "profiteers_hitmarker_enable")
             mode:SetSortItems(false)
             mode:AddChoice("Disabled", 0)
@@ -121,9 +138,36 @@ else
             pan:CheckBox("Show kill indicators", "profiteers_hitmarker_kill")
             pan:CheckBox("Show afterburn indicators", "profiteers_hitmarker_fire")
             pan:CheckBox("Show prop (and other breakable entity) hit indicators", "profiteers_hitmarker_prop")
-            pan:ControlHelp("")
+            pan:ControlHelp("\nDamage indicators")
             pan:CheckBox("Enable directional damage indicators", "profiteers_dmgindicator_enable")
             pan:NumSlider("Damage indicator scale", "profiteers_dmgindicator_scale", 0.25, 2.5, 3)
+            pan:Help("It's those arrows pointing toward where you were shot from.")
+        end)
+
+        spawnmenu.AddToolMenuOption("Utilities", "Cool Hitmarkers", "profiteers_hitmarker_sv", "Server", "", "", function(pan)
+            pan:CheckBox("Use server hitmarker settings", "profiteers_override_enabled")
+            pan:ControlHelp("\nHitmarkers")
+            local mode = pan:ComboBox("Hitmarker mode", "profiteers_override_hitmarker_enable")
+            mode:SetSortItems(false)
+            mode:AddChoice("Disabled", 0)
+            mode:AddChoice("Audiovisual", 1)
+            mode:AddChoice("Visual only", 2)
+            mode:AddChoice("Audio only", 3)
+            pan:NumSlider("Hitmarker scale", "profiteers_override_hitmarker_scale", 0.25, 2.5, 3)
+            pan:CheckBox("Use dynamic position for hit markers", "profiteers_override_hitmarker_dynamic")
+            local long = pan:ComboBox("Longshot indicators", "profiteers_override_hitmarker_longshot")
+            long:SetSortItems(false)
+            long:AddChoice("Disabled", 0)
+            long:AddChoice("Every hit", 1)
+            long:AddChoice("Kills only", 2)
+            pan:CheckBox("Show armor hit indicators", "profiteers_override_hitmarker_armor")
+            pan:CheckBox("Show headshot indicators", "profiteers_override_hitmarker_head")
+            pan:CheckBox("Show kill indicators", "profiteers_override_hitmarker_kill")
+            pan:CheckBox("Show afterburn indicators", "profiteers_override_hitmarker_fire")
+            pan:CheckBox("Show prop (and other breakable entity) hit indicators", "profiteers_override_hitmarker_prop")
+            pan:ControlHelp("\nDamage indicators")
+            pan:CheckBox("Enable directional damage indicators", "profiteers_override_dmgindicator_enable")
+            pan:NumSlider("Damage indicator scale", "profiteers_override_dmgindicator_scale", 0.25, 2.5, 3)
             pan:Help("It's those arrows pointing toward where you were shot from.")
         end)
     end)
@@ -131,31 +175,37 @@ else
     -- hush
     local function DoSize(size, scale) -- scale is 2 bit operator, first bit dimension, second indicator or hitmarker
         scale = scale or 0
-        return size * (bit.band(scale, 1) == 1 and (ScrH() / 480) or (ScrW() / 640)) * (bit.band(scale, 2) == 2 and indicatorscale:GetFloat() or hmscale:GetFloat())
+        local iscale, hscale = (hmauth and indicatorscalesv or indicatorscale), (hmauth and hmscalesv or hmscale)
+        return size * (bit.band(scale, 1) == 1 and (ScrH() / 480) or (ScrW() / 640)) * (bit.band(scale, 2) == 2 and iscale:GetFloat() or hscale:GetFloat())
     end
 
     hook.Add("HUDPaint", "profiteers_hitmark_paint", function()
-        if hm:GetInt() == 3 then return end
+        if (hmauth and hmsv:GetInt() or hm:GetInt()) == 3 then return end
         local lp = LocalPlayer()
         local ct = CurTime()
         local scrw, scrh = ScrW(), ScrH()
         local x, y = 0 < lasthmtbl.x and lasthmtbl.x < scrw and lasthmtbl.x or scrw * 0.5, 0 < lasthmtbl.y and lasthmtbl.y < scrh and lasthmtbl.y or scrh * 0.5
+        local dist, ind = (hmauth and distantshotsv or distantshot), (hmauth and indicatorssv or indicators)
 
         if lasthm > ct then -- any hitmarkers
             local state = (lasthm - ct) / hmlength
             -- hmrotata = math.max(0, hmrotata - FrameTime()*300)
             hmrotata = Lerp(FrameTime()*25, hmrotata, 0)
+            local armor = (hmauth and hmarmorsv or hmarmor)
+            local fire = (hmauth and hmfiresv or hmfire)
+            local kill = (hmauth and hmkillsv or hmkill)
+            local head = (hmauth and hmheadsv or hmhead)
 
-            if hmarmor:GetBool() and lasthmarmor == 2 then
+            if armor:GetBool() and lasthmarmor == 2 then
                 surface.SetMaterial(hmmat4)
-            elseif lasthmprop or hmfire:GetBool() and lasthmfire then
+            elseif lasthmprop or fire:GetBool() and lasthmfire then
                 surface.SetMaterial(hmmat3)
             else
-                surface.SetMaterial(hmhead:GetBool() and lasthmhead and hmmat2 or hmmat)
+                surface.SetMaterial(head:GetBool() and lasthmhead and hmmat2 or hmmat)
             end
-            if hmkill:GetBool() and lasthmkill then
+            if kill:GetBool() and lasthmkill then
                 surface.SetDrawColor(255, 0, 0, 255 * state)
-            elseif hmarmor:GetBool() and lasthmarmor > 0 then
+            elseif armor:GetBool() and lasthmarmor > 0 then
                 surface.SetDrawColor(119, 119, 255, 255 * state)
             else
                 surface.SetDrawColor(255, 255, 255, 255 * state)
@@ -164,7 +214,7 @@ else
             -- surface.DrawTexturedRect(x - DoSize(6) - DoSize(8) * state, y - DoSize(6) - DoSize(8) * state, DoSize(12) + DoSize(16) * state, DoSize(12) + DoSize(16) * state)
             surface.DrawTexturedRectRotated(x, y, DoSize(12) + DoSize(16) * state, DoSize(12) + DoSize(16) * state, hmrotata)
 
-            if hmarmor:GetBool() and lasthmarmor > 0 then
+            if armor:GetBool() and lasthmarmor > 0 then
                 surface.SetDrawColor(119, 119, 255, 255 * state)
                 if lasthmarmor == 3 then -- armor damage
                     surface.SetMaterial(matarmor)
@@ -178,14 +228,14 @@ else
                 surface.SetMaterial(matgear)
                 surface.DrawTexturedRect(x + DoSize(16), y + DoSize(4), DoSize(8), DoSize(8))
             end
-            if hmfire:GetBool() and lasthmfire then -- afterburn damage
+            if fire:GetBool() and lasthmfire then -- afterburn damage
                 surface.SetDrawColor(255, 255, 255, 255 * state)
                 surface.SetMaterial(matfire)
                 surface.DrawTexturedRect(x - DoSize(4), y + DoSize(16), DoSize(8), DoSize(8))
             end
         end
 
-        if (distantshot:GetInt() == 2 and lasthmkill or distantshot:GetInt() == 1) and lastdistantshot > ct then -- long range hits
+        if (dist:GetInt() == 2 and lasthmkill or dist:GetInt() == 1) and lastdistantshot > ct then -- long range hits
             local state = (lastdistantshot - ct) * 2
             local message = (lasthmkill and lasthmhead) and "Long range HEADSHOT!!" or lasthmkill and "Long range kill!" or "Long range hit"
             -- surface.SetFont("CGHUD_7_Shadow")
@@ -205,7 +255,7 @@ else
             surface.DrawText(lasthmdistance .. " m")
         end
 
-        if indicators:GetBool() then
+        if ind:GetBool() then
             for k, v in ipairs(hitindicators) do -- hit indicators
                 local decay = math.max(0, (v.time - ct)) * 30
 
@@ -235,7 +285,9 @@ else
     end)
 
     local function hitmarker()
-        if !hm:GetBool() then return end
+        local sv = hmoverride:GetBool()
+        local mode = sv and hmsv:GetInt() or hm:GetInt()
+        if mode <= 0 then return end
         local dmg = net.ReadUInt(16)
         local isliving = net.ReadBool()
         local head = net.ReadBool()
@@ -247,6 +299,7 @@ else
         local lp = LocalPlayer()
         local ct = CurTime()
         if lasthm > ct and lasthmkill then return end
+        hmauth = sv
         lasthmhead = head
         lasthmfire = onfire
         lasthmkill = killed
@@ -256,7 +309,7 @@ else
 
         lasthmtbl = {x = ScrW() * 0.5, y = ScrH() * 0.5, visible = false }
 
-        if hmpos:GetBool() and lasthmpos != Vector() then
+        if (sv and hmpossv or hmpos):GetBool() and lasthmpos != Vector() then
             cam.Start3D()
 
             local toscr = pos:ToScreen()
@@ -276,11 +329,11 @@ else
             lasthmdistance = math.Round(distance * 0.0254, 1)
             lastdistantshot = ct + 3
             end
-        elseif !hmprop:GetBool() then return end
+        elseif !(sv and hmpropsv or hmprop):GetBool() then return end
 
         lasthm = ct + hmlength
 
-        if hm:GetInt() == 2 then return end
+        if mode == 2 then return end
 
         if armored == 2 then -- seperate armor break sond without delay
             surface.PlaySound("profiteers/breakarmorr.ogg")
