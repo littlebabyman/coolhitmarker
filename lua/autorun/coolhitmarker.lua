@@ -1,6 +1,5 @@
 -- if engine.ActiveGamemode() != "sandbox" then return end
 local longrangeshot = 3937 * 0.5 -- 50m
-local extralongrangeshot = 3937 * 1.5 -- 150m
 
 local flags = {FCVAR_NOTIFY, FCVAR_ARCHIVE, FCVAR_REPLICATED}
 
@@ -17,6 +16,19 @@ local hmkillsv = CreateConVar("profiteers_override_hitmarker_kill", "1", flags, 
 local hmfiresv = CreateConVar("profiteers_override_hitmarker_fire", "1", flags, "Override afterburn indicators.", 0, 1)
 local hmpropsv = CreateConVar("profiteers_override_hitmarker_prop", "1", flags, "Override prop (and other breakable entity) hit indicators.", 0, 1)
 
+local ammotable = { -- plese nothing bigger than 2 digits :) uint bitch
+    ["buckshot"] = 0.3,
+    ["pistol"] = 0.5,
+    ["smg1"] = 0.7,
+    ["sniperpenetratedround"] = 1.5,
+    ["sniperround"] = 1.5,
+    ["xbowbolt"] = 1.5,
+
+    ["default"] = 1,
+    -- 357 used often for sniper rifles, not only pistols, so keeping it on 1
+    -- ar2 is default basically so 1 too
+}
+
 if SERVER then
     util.AddNetworkString("profiteers_hitmark")
     util.AddNetworkString("profiteers_gothit")
@@ -31,9 +43,17 @@ if SERVER then
 
         if IsValid(ent) and IsValid(attacker) and attacker:IsPlayer() then
             local distance = ent:GetPos():Distance(attacker:GetPos())
+            local swep = attacker:GetActiveWeapon()
+            local ammo = swep:IsScripted() and string.lower(swep.Primary.Ammo or "default") or "default"
+            if !ammotable[ammo] then ammo = "default" end
 
-            -- if distance > longrangeshot blabla give more moneys                     btw and check if ent is player because everyone can kill static npcs on long range
-            -- if distance > extralongrangeshot blabla give more more moneys and type something in chat about attacker's crazy sniper skills
+            if ammotable[ammo] == 0.3 then -- its shotgun, checking for slugs
+                if (swep.ARC9 and swep:GetValue("Num") or swep.GripPoseParameters and swep.Bullet.NumBullets or swep.ArcCW and (swep:GetBuff_Override("Override_Num") or swep.Num) or swep.Primary.Num or 6) < 3 then
+                    ammo = "smg1" -- setting range mult to 0.7
+                end
+            end
+
+            -- if you making some gamemode you can add here check for distance and give more points/moneys for long kills
 
             net.Start("profiteers_hitmark")
             net.WriteUInt(dmginfo:GetDamage(), 16)
@@ -44,6 +64,7 @@ if SERVER then
             net.WriteVector(dmginfo:GetDamagePosition() != Vector() and attacker:VisibleVec(dmginfo:GetDamagePosition()) and dmginfo:GetDamagePosition() or Vector())
             net.WriteUInt((ent:IsPlayer() and (ent:Armor() > 0 and 1 or 0) + (ent.phm_lastArmor > 0 and 2 or 0)) or 0, 2)
             net.WriteUInt(distance, 16)
+            net.WriteUInt(ammotable[ammo]*10, 6)
             net.Send(attacker)
             npcheadshotted = false
         end
@@ -296,6 +317,7 @@ else
         local pos = net.ReadVector()
         local armored = net.ReadUInt(2)
         local distance = net.ReadUInt(16)
+        local longrangemult = net.ReadUInt(6) / 10
         local lp = LocalPlayer()
         local ct = CurTime()
         if lasthm > ct and lasthmkill then return end
@@ -325,9 +347,9 @@ else
         hmlength = (armored == 2 or killed) and 0.5 or 0.22
 
         if isliving then
-            if distance > longrangeshot then
-            lasthmdistance = math.Round(distance * 0.0254, 1)
-            lastdistantshot = ct + 3
+            if distance > longrangeshot * longrangemult then
+                lasthmdistance = math.Round(distance * 0.0254, 1)
+                lastdistantshot = ct + 3
             end
         elseif !(sv and hmpropsv or hmprop):GetBool() then return end
 
