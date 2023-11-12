@@ -44,7 +44,7 @@ if SERVER then
         if IsValid(ent) and IsValid(attacker) and attacker:IsPlayer() then
             local distance = ent:GetPos():Distance(attacker:GetPos())
             local swep = attacker:GetActiveWeapon()
-            local ammo = swep:IsScripted() and string.lower(swep.Primary.Ammo or "default") or "default"
+            local ammo = swep:IsValid() and swep:IsScripted() and string.lower(swep.Primary.Ammo or "default") or "default"
             if !ammotable[ammo] then ammo = "default" end
 
             if ammotable[ammo] == 0.3 then -- its shotgun, checking for slugs
@@ -317,7 +317,7 @@ else
         local pos = net.ReadVector()
         local armored = net.ReadUInt(2)
         local distance = net.ReadUInt(16)
-        local longrangemult = net.ReadUInt(6) / 10
+        local longrangemult = net.ReadUInt(6) * 0.1
         local lp = LocalPlayer()
         local ct = CurTime()
         if lasthm > ct and lasthmkill then return end
@@ -347,7 +347,7 @@ else
         hmlength = (armored == 2 or killed) and 0.5 or 0.22
 
         if isliving then
-            if distance > longrangeshot * longrangemult then
+            if !onfire and distance > longrangeshot * longrangemult then
                 lasthmdistance = math.Round(distance * 0.0254, 1)
                 lastdistantshot = ct + 3
             end
