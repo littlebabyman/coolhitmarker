@@ -365,7 +365,7 @@ else
             if !lp then return end -- just to be sure
 
             -- juicer when many dmg
-            for i = 1, math.Clamp(math.ceil(dmg / 40), 1, 4) do
+            for i = 1, math.Clamp(math.ceil(dmg * 0.025), 1, 4) do
                 if !onfire and head then
                     surface.PlaySound("profiteers/headmarker.ogg")
                 elseif armored == 3 then
@@ -375,12 +375,9 @@ else
                 end
 
                 if killed then
-                    timer.Simple(0.15, function()
+                    timer.Simple(0.03, function()
                         if !IsValid(lp) then return end -- just to be sure
-
-                        for i = 1, 3 do
-                            surface.PlaySound("profiteers/killmarker.ogg")
-                        end
+                        surface.PlaySound("profiteers/newkillmarker.ogg")
                     end)
                 end
             end
