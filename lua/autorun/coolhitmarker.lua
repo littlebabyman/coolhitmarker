@@ -56,13 +56,13 @@ if SERVER then
             -- if you making some gamemode you can add here check for distance and give more points/moneys for long kills
 
             net.Start("profiteers_hitmark")
-            net.WriteUInt(took and dmginfo:GetDamage() or 0, 16)
+            net.WriteUInt(ent.phm_lastHealth and ent.phm_lastHealth - ent:Health() or dmginfo:GetDamage() or 0, 16)
             net.WriteBool(ent:IsPlayer() or ent:IsNextBot() or ent:IsNPC())
             net.WriteBool((ent:IsPlayer() and ent:LastHitGroup() == HITGROUP_HEAD) or ((ent:IsNPC() or ent:IsNextBot()) and npcheadshotted) or false)
             net.WriteBool(bit.band(dmginfo:GetDamageType(), DMG_BURN+DMG_DIRECT) == DMG_BURN+DMG_DIRECT or false)
             net.WriteBool(((ent:IsPlayer() or ent:IsNextBot() or ent:IsNPC()) and ent:Health() <= 0) or (ent:GetNWInt("PFPropHealth", 1) <= 0) or false)
             net.WriteVector(dmginfo:GetDamagePosition() != Vector() and attacker:VisibleVec(dmginfo:GetDamagePosition()) and dmginfo:GetDamagePosition() or Vector())
-            net.WriteUInt((ent:IsPlayer() and (ent:Armor() > 0 and 1 or 0) + (ent.phm_lastArmor > 0 and 2 or 0)) or 0, 2)
+            net.WriteUInt((ent.Armor and (ent:Armor() > 0 and 1 or 0) + (ent.phm_lastArmor > 0 and 2 or 0)) or 0, 2)
             net.WriteUInt(distance, 16)
             net.WriteUInt(ammotable[ammo]*10, 6)
             net.Send(attacker)
@@ -87,14 +87,14 @@ if SERVER then
         -- largely copied idea from hit numbers
         if !target:IsValid() then return end
         if target:GetCollisionGroup() == COLLISION_GROUP_DEBRIS then return end
-        if target:IsPlayer() then
-            target.phm_lastArmor = target:Armor() or 0
-        end
-        target.phm_lastHealth = target:Health() or 0
         if dmginfo:GetAttacker():IsPlayer() and dmginfo:IsDamageType(DMG_BURN+DMG_SLOWBURN) then target.phm_lastAttacker = dmginfo:GetAttacker() end
         if target.phm_lastAttacker and dmginfo:IsDamageType(DMG_BURN+DMG_SLOWBURN) then
             dmginfo:SetAttacker(target.phm_lastAttacker)
         end
+        if target.Armor then
+            target.phm_lastArmor = target:Armor() or 0
+        end
+        target.phm_lastHealth = target:Health() or 0
     end)
 
     hook.Add("PostEntityTakeDamage", "profiteers_hitmarkers", hitmark)
