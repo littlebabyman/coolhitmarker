@@ -56,7 +56,7 @@ if SERVER then
             -- if you making some gamemode you can add here check for distance and give more points/moneys for long kills
 
             net.Start("profiteers_hitmark")
-            net.WriteUInt(dmginfo:GetDamage(), 16)
+            net.WriteUInt(took and dmginfo:GetDamage() or 0, 16)
             net.WriteBool(ent:IsPlayer() or ent:IsNextBot() or ent:IsNPC())
             net.WriteBool((ent:IsPlayer() and ent:LastHitGroup() == HITGROUP_HEAD) or ((ent:IsNPC() or ent:IsNextBot()) and npcheadshotted) or false)
             net.WriteBool(bit.band(dmginfo:GetDamageType(), DMG_BURN+DMG_DIRECT) == DMG_BURN+DMG_DIRECT or false)
@@ -114,6 +114,7 @@ else
     local hmrotata = 0
     local hmauth = 0
     local lasthm = 0
+    local lasthurt = false
     local lastdistantshot = 0
     local lasthmpos = Vector()
     local lasthmtbl = {x = ScrW() * 0.5, y = ScrH() * 0.5, visible = false}
@@ -217,14 +218,17 @@ else
             local kill = (hmauth and hmkillsv or hmkill)
             local head = (hmauth and hmheadsv or hmhead)
 
-            if armor:GetBool() and lasthmarmor == 2 then
-                surface.SetMaterial(hmmat4)
-            elseif lasthmprop or fire:GetBool() and lasthmfire then
+            if lasthmprop or fire:GetBool() and lasthmfire or !lasthurt then
                 surface.SetMaterial(hmmat3)
+            elseif armor:GetBool() and lasthmarmor == 2 then
+                surface.SetMaterial(hmmat4)
             else
                 surface.SetMaterial(head:GetBool() and lasthmhead and hmmat2 or hmmat)
             end
-            if kill:GetBool() and lasthmkill then
+            
+            if !lasthurt then
+                surface.SetDrawColor(255, 255, 255, 119 * state)
+            elseif kill:GetBool() and lasthmkill then
                 surface.SetDrawColor(255, 0, 0, 255 * state)
             elseif armor:GetBool() and lasthmarmor > 0 then
                 surface.SetDrawColor(119, 119, 255, 255 * state)
@@ -322,6 +326,7 @@ else
         local ct = CurTime()
         if lasthm > ct and lasthmkill then return end
         hmauth = sv
+        lasthurt = dmg > 0
         lasthmhead = head
         lasthmfire = onfire
         lasthmkill = killed
@@ -363,9 +368,9 @@ else
 
         timer.Simple(0.06, function()
             if !lp then return end -- just to be sure
-
+            if !lasthurt then surface.PlaySound("profiteers/hitmarkfail.ogg") return end
             -- juicer when many dmg
-            for i = 1, math.Clamp(math.ceil(dmg * 0.025), 1, 4) do
+            for i = 1, math.Clamp(math.ceil(dmg * 0.025), 1, 2) do
                 if !onfire and head then
                     surface.PlaySound("profiteers/headmarker.ogg")
                 elseif armored == 3 then
