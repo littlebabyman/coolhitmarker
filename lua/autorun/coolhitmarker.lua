@@ -206,6 +206,7 @@ else
         local lp = LocalPlayer()
         local ct = CurTime()
         local scrw, scrh = ScrW(), ScrH()
+        local alpha = lasthurt and 255 or 119
         local x, y = 0 < lasthmtbl.x and lasthmtbl.x < scrw and lasthmtbl.x or scrw * 0.5, 0 < lasthmtbl.y and lasthmtbl.y < scrh and lasthmtbl.y or scrh * 0.5
         local dist, ind = (hmauth and distantshotsv or distantshot), (hmauth and indicatorssv or indicators)
 
@@ -226,14 +227,12 @@ else
                 surface.SetMaterial(head:GetBool() and lasthmhead and hmmat2 or hmmat)
             end
             
-            if !lasthurt then
-                surface.SetDrawColor(255, 255, 255, 119 * state)
-            elseif kill:GetBool() and lasthmkill then
-                surface.SetDrawColor(255, 0, 0, 255 * state)
+            if kill:GetBool() and lasthmkill then
+                surface.SetDrawColor(255, 0, 0, alpha * state)
             elseif armor:GetBool() and lasthmarmor > 0 then
-                surface.SetDrawColor(119, 119, 255, 255 * state)
+                surface.SetDrawColor(119, 119, 255, alpha * state)
             else
-                surface.SetDrawColor(255, 255, 255, 255 * state)
+                surface.SetDrawColor(255, 255, 255, alpha * state)
             end
 
             -- surface.DrawTexturedRect(x - DoSize(6) - DoSize(8) * state, y - DoSize(6) - DoSize(8) * state, DoSize(12) + DoSize(16) * state, DoSize(12) + DoSize(16) * state)
