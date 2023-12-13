@@ -239,7 +239,7 @@ else
             surface.DrawTexturedRectRotated(x, y, DoSize(12) + DoSize(16) * state, DoSize(12) + DoSize(16) * state, hmrotata)
 
             if armor:GetBool() and lasthmarmor > 0 then
-                surface.SetDrawColor(119, 119, 255, 255 * state)
+                surface.SetDrawColor(119, 119, 255, alpha * state)
                 if lasthmarmor == 3 then -- armor damage
                     surface.SetMaterial(matarmor)
                 else
@@ -248,12 +248,12 @@ else
                 surface.DrawTexturedRect(x + DoSize(16), y - DoSize(12), DoSize(8), DoSize(8))
             end
             if lasthmprop then -- prop damage
-                surface.SetDrawColor(255, 255, 255, 255 * state)
+                surface.SetDrawColor(255, 255, 255, alpha * state)
                 surface.SetMaterial(matgear)
                 surface.DrawTexturedRect(x + DoSize(16), y + DoSize(4), DoSize(8), DoSize(8))
             end
             if fire:GetBool() and lasthmfire then -- afterburn damage
-                surface.SetDrawColor(255, 255, 255, 255 * state)
+                surface.SetDrawColor(255, 255, 255, alpha * state)
                 surface.SetMaterial(matfire)
                 surface.DrawTexturedRect(x - DoSize(4), y + DoSize(16), DoSize(8), DoSize(8))
             end
@@ -351,7 +351,7 @@ else
         hmlength = (armored == 2 or killed) and 0.5 or 0.22
 
         if isliving then
-            if !onfire and distance > longrangeshot * longrangemult then
+            if !onfire and distance > longrangeshot * longrangemult and lasthurt then
                 lasthmdistance = math.Round(distance * 0.0254, 1)
                 lastdistantshot = ct + 3
             end
