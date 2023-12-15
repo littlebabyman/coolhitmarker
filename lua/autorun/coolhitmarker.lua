@@ -89,7 +89,6 @@ if SERVER then
 
         -- largely copied idea from hit numbers
         if !target:IsValid() then return end
-        if target:GetCollisionGroup() == COLLISION_GROUP_DEBRIS then return end
         if dmginfo:GetAttacker():IsPlayer() and dmginfo:IsDamageType(DMG_BURN+DMG_SLOWBURN) then target.phm_lastAttacker = dmginfo:GetAttacker() end
         if target.phm_lastAttacker and dmginfo:IsDamageType(DMG_BURN+DMG_SLOWBURN) then
             dmginfo:SetAttacker(target.phm_lastAttacker)
