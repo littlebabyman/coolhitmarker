@@ -37,11 +37,14 @@ if SERVER then
 
     local function hitmark(ent, dmginfo, took)
         local attacker = dmginfo:GetAttacker()
-        
+        local attply, vicply = attacker:IsPlayer(), ent:IsPlayer()
+        if (!attply and !vicply) then return end
         if dmginfo:GetInflictor() == ent or attacker == ent then return end
-        if ent.phm_lastHealth and ent.phm_lastHealth == ent:Health() and (!took and ent:Health() == 0 or took) then return end
+        local vichp = ent:Health()
+        if ent.phm_lastHealth and ent.phm_lastHealth == vichp and (!took and vichp == 0 or took) then return end
+        local vicnpc = ent:IsNextBot() or ent:IsNPC()
 
-        if IsValid(ent) and IsValid(attacker) and attacker:IsPlayer() then
+        if IsValid(ent) and IsValid(attacker) and attply then
             local distance = ent:GetPos():Distance(attacker:GetPos())
             local swep = attacker:GetActiveWeapon()
             local ammo = swep:IsValid() and swep:IsScripted() and string.lower(swep.Primary.Ammo or "default") or "default"
@@ -56,12 +59,12 @@ if SERVER then
             -- if you making some gamemode you can add here check for distance and give more points/moneys for long kills
 
             net.Start("profiteers_hitmark")
-            net.WriteUInt(ent.phm_lastHealth and ent.phm_lastHealth - ent:Health() or dmginfo:GetDamage() or 0, 16)
-            net.WriteBool(ent:IsPlayer() or ent:IsNextBot() or ent:IsNPC())
-            net.WriteBool((ent:IsPlayer() and ent:LastHitGroup() == HITGROUP_HEAD) or ((ent:IsNPC() or ent:IsNextBot()) and npcheadshotted) or false)
+            net.WriteUInt(ent.phm_lastHealth and ent.phm_lastHealth - vichp or dmginfo:GetDamage() or 0, 16)
+            net.WriteBool(vicply or vicnpc)
+            net.WriteBool((vicply and ent:LastHitGroup() == HITGROUP_HEAD) or ((vicnpc) and npcheadshotted) or false)
             net.WriteBool(bit.band(dmginfo:GetDamageType(), DMG_BURN+DMG_DIRECT) == DMG_BURN+DMG_DIRECT or false)
-            net.WriteBool(((ent:IsPlayer() or ent:IsNextBot() or ent:IsNPC()) and ent:Health() <= 0) or (ent:GetNWInt("PFPropHealth", 1) <= 0) or false)
-            net.WriteVector(dmginfo:GetDamagePosition() != Vector() and attacker:VisibleVec(dmginfo:GetDamagePosition()) and dmginfo:GetDamagePosition() or Vector())
+            net.WriteBool(((vicply or vicnpc) and vichp <= 0) or (ent:GetNWInt("PFPropHealth", 1) <= 0) or false)
+            net.WriteVector(dmginfo:GetDamagePosition() != vector_origin and attacker:VisibleVec(dmginfo:GetDamagePosition()) and dmginfo:GetDamagePosition() or vector_origin)
             net.WriteUInt((ent.Armor and (ent:Armor() > 0 and 1 or 0) + (ent.phm_lastArmor > 0 and 2 or 0)) or 0, 2)
             net.WriteUInt(distance, 16)
             net.WriteUInt(ammotable[ammo]*10, 6)
@@ -335,7 +338,7 @@ else
 
         lasthmtbl = {x = ScrW() * 0.5, y = ScrH() * 0.5, visible = false }
 
-        if (sv and hmpossv or hmpos):GetBool() and lasthmpos != Vector() then
+        if (sv and hmpossv or hmpos):GetBool() and lasthmpos != vector_origin then
             cam.Start3D()
 
             local toscr = pos:ToScreen()
