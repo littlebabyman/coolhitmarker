@@ -48,6 +48,7 @@ if SERVER then
             local distance = ent:GetPos():Distance(attacker:GetPos())
             local swep = attacker:GetActiveWeapon()
             local ammo = swep:IsValid() and swep:IsScripted() and string.lower(swep.Primary.Ammo or "default") or "default"
+            local armored = ent.Armor and isnumber(ent:Armor())
             if !ammotable[ammo] then ammo = "default" end
 
             if ammotable[ammo] == 0.3 then -- its shotgun, checking for slugs
@@ -65,7 +66,7 @@ if SERVER then
             net.WriteBool(bit.band(dmginfo:GetDamageType(), DMG_BURN+DMG_DIRECT) == DMG_BURN+DMG_DIRECT or false)
             net.WriteBool(((vicply or vicnpc) and vichp <= 0) or (ent:GetNWInt("PFPropHealth", 1) <= 0) or false)
             net.WriteVector(dmginfo:GetDamagePosition() != vector_origin and attacker:VisibleVec(dmginfo:GetDamagePosition()) and dmginfo:GetDamagePosition() or vector_origin)
-            net.WriteUInt((ent.Armor and (ent:Armor() > 0 and 1 or 0) + (ent.phm_lastArmor > 0 and 2 or 0)) or 0, 2)
+            net.WriteUInt(armored and (ent:Armor() > 0 and 1 or 0) + (ent.phm_lastArmor > 0 and 2 or 0) or 0, 2)
             net.WriteUInt(distance, 16)
             net.WriteUInt(ammotable[ammo]*10, 6)
             net.Send(attacker)
