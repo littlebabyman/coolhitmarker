@@ -317,6 +317,7 @@ else
         if mode <= 0 then return end
         local dmg = net.ReadUInt(16)
         local isliving = net.ReadBool()
+        if dmg <= 0 and !isliving then return end
         local head = net.ReadBool()
         local onfire = net.ReadBool()
         local killed = net.ReadBool()
