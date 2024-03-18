@@ -65,15 +65,16 @@ if SERVER then
 
             net.Start("profiteers_hitmark")
             net.WriteUInt(ent.phm_lastHealth and ent.phm_lastHealth - vichp or dmginfo:GetDamage() or 0, 16) -- Damage
+            net.WriteUInt(dmgtype, 31) -- Damage type
             net.WriteBool(vicply or vicnpc) -- Player or npc
             net.WriteBool((vicply and ent:LastHitGroup() == HITGROUP_HEAD) or ((vicnpc) and npcheadshotted) or false) -- Headshot
-            net.WriteBool(bit.band(dmgtype, DMG_BURN+DMG_DIRECT) == DMG_BURN+DMG_DIRECT or false) -- Burned
+            -- net.WriteBool(bit.band(dmgtype, DMG_BURN+DMG_DIRECT) == DMG_BURN+DMG_DIRECT or false) -- Burned, done on client
             net.WriteBool(((vicply or vicnpc) and vichp <= 0) or (ent:GetNWInt("PFPropHealth", 1) <= 0) or false) -- Is prop
             net.WriteVector(dmginfo:GetDamagePosition() != vector_origin and attacker:VisibleVec(dmginfo:GetDamagePosition()) and dmginfo:GetDamagePosition() or vector_origin) -- Attacker position
             net.WriteUInt(armored and (ent:Armor() > 0 and 1 or 0) + (ent.phm_lastArmor > 0 and 2 or 0) or 0, 2) -- Armor
             net.WriteUInt(distance, 16) -- Distance
             net.WriteUInt(ammotable[ammo]*10, 6) -- Ammo type in gun
-            net.WriteUInt( ((dmgtype == DMG_CLUB or dmgtype == DMG_SLASH) and 1) or (dmgtype == DMG_BLAST and 2) or 0, 2) -- Melee or explosion or other dmg type (for skulls)
+            -- net.WriteUInt( ((dmgtype == DMG_CLUB or dmgtype == DMG_SLASH) and 1) or (dmgtype == DMG_BLAST and 2) or 0, 2) -- Melee or explosion or other dmg type (for skulls), done on client
             net.Send(attacker)
             npcheadshotted = false
         end
@@ -382,16 +383,17 @@ else
         local mode = sv and hmsv:GetInt() or hm:GetInt()
         if mode <= 0 then return end
         local dmg = net.ReadUInt(16)
+        local dmgtype = net.ReadUInt(31)
         local isliving = net.ReadBool()
         if dmg <= 0 and !isliving then return end
         local head = net.ReadBool()
-        local onfire = net.ReadBool()
+        local onfire = bit.band(dmgtype, DMG_BURN+DMG_DIRECT) == DMG_BURN+DMG_DIRECT
         local killed = net.ReadBool()
         local pos = net.ReadVector()
         local armored = net.ReadUInt(2)
         local distance = net.ReadUInt(16)
         local longrangemult = net.ReadUInt(6) * 0.1
-        local dmgtype = net.ReadUInt(2)
+        local killtype = ((dmgtype == DMG_CLUB or dmgtype == DMG_SLASH) and 1) or (dmgtype == DMG_BLAST and 2) or 0
         local lp = LocalPlayer()
         local ct = CurTime()
 
@@ -403,8 +405,8 @@ else
             table.insert(skulltable, {
                 time = ct + skulldecaytime,
                 hs = lasthmhead,
-                meleed = dmgtype == 1,
-                exploded = dmgtype == 2,
+                meleed = killtype == 1,
+                exploded = killtype == 2,
             })
             skullnextdelete = ct + skulldecaytime
             
