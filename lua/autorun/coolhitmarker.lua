@@ -71,6 +71,7 @@ if SERVER then
             -- net.WriteBool(bit.band(dmgtype, DMG_BURN+DMG_DIRECT) == DMG_BURN+DMG_DIRECT or false) -- Burned, done on client
             net.WriteBool(((vicply or vicnpc) and vichp <= 0) or (ent:GetNWInt("PFPropHealth", 1) <= 0) or false) -- Is prop
             net.WriteVector(dmginfo:GetDamagePosition() != vector_origin and attacker:VisibleVec(dmginfo:GetDamagePosition()) and dmginfo:GetDamagePosition() or vector_origin) -- Attacker position
+            net.WriteInt(dmginfo:GetDamageCustom(), 12)
             net.WriteUInt(armored and (ent:Armor() > 0 and 1 or 0) + (ent.phm_lastArmor > 0 and 2 or 0) or 0, 2) -- Armor
             net.WriteUInt(distance, 16) -- Distance
             net.WriteUInt(ammotable[ammo]*10, 6) -- Ammo type in gun
@@ -225,6 +226,8 @@ else
     local matskullhs = Material("profiteers/skullhs.png", "noclamp smooth")
     local matexplosion = Material("profiteers/explosion.png", "noclamp smooth")
     local matmelee = Material("profiteers/knife.png", "noclamp smooth")
+    local matkick = Material("profiteers/kick.png", "noclamp smooth")
+    local matkick2 = Material("profiteers/kick2.png", "noclamp smooth")
     
     hook.Add("HUDPaint", "profiteers_hitmark_paint", function()
         if (hmauth and hmsv:GetInt() or hm:GetInt()) == 3 then return end
@@ -360,7 +363,10 @@ else
                     surface.SetDrawColor(255, 255, 255, 200 * skullsdecay * fadein)
                 end
 
-                if v.meleed then
+                if v.kicked then
+                    surface.SetDrawColor(255, 255, 255, 200 * skullsdecay * fadein)
+                    surface.SetMaterial(matkick2)
+                elseif v.meleed then
                     surface.SetDrawColor(255, 58, 58, 200 * skullsdecay * fadein)
                     surface.SetMaterial(matmelee)
                 end
@@ -390,6 +396,7 @@ else
         local onfire = bit.band(dmgtype, DMG_BURN+DMG_DIRECT) == DMG_BURN+DMG_DIRECT
         local killed = net.ReadBool()
         local pos = net.ReadVector()
+        local dspec = net.ReadInt(12)
         local armored = net.ReadUInt(2)
         local distance = net.ReadUInt(16)
         local longrangemult = net.ReadUInt(6) * 0.1
@@ -407,6 +414,7 @@ else
                 hs = lasthmhead,
                 meleed = killtype == 1,
                 exploded = killtype == 2,
+                kicked = dspec == 67,
             })
             skullnextdelete = ct + skulldecaytime
             
