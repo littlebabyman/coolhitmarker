@@ -1,3 +1,4 @@
+CoolHitmarkersInstalled = true
 -- if engine.ActiveGamemode() != "sandbox" then return end
 local longrangeshot = 3937 * 0.5 -- 50m
 
@@ -15,6 +16,7 @@ local hmheadsv = CreateConVar("profiteers_override_hitmarker_head", "1", flags, 
 local hmkillsv = CreateConVar("profiteers_override_hitmarker_kill", "1", flags, "Override kill indicators.", 0, 1)
 local hmfiresv = CreateConVar("profiteers_override_hitmarker_fire", "1", flags, "Override afterburn indicators.", 0, 1)
 local hmpropsv = CreateConVar("profiteers_override_hitmarker_prop", "1", flags, "Override prop (and other breakable entity) hit indicators.", 0, 1)
+local skullssv = CreateConVar("profiteers_override_skulls", "1", flags, "Override Show how many enemys youve killed. very cruel.", 0, 1)
 
 local ammotable = { -- plese nothing bigger than 2 digits :) uint bitch
     ["buckshot"] = 0.3,
@@ -59,16 +61,19 @@ if SERVER then
 
             -- if you making some gamemode you can add here check for distance and give more points/moneys for long kills
 
+            local dmgtype = dmginfo:GetDamageType()
+
             net.Start("profiteers_hitmark")
-            net.WriteUInt(ent.phm_lastHealth and ent.phm_lastHealth - vichp or dmginfo:GetDamage() or 0, 16)
-            net.WriteBool(vicply or vicnpc)
-            net.WriteBool((vicply and ent:LastHitGroup() == HITGROUP_HEAD) or ((vicnpc) and npcheadshotted) or false)
-            net.WriteBool(bit.band(dmginfo:GetDamageType(), DMG_BURN+DMG_DIRECT) == DMG_BURN+DMG_DIRECT or false)
-            net.WriteBool(((vicply or vicnpc) and vichp <= 0) or (ent:GetNWInt("PFPropHealth", 1) <= 0) or false)
-            net.WriteVector(dmginfo:GetDamagePosition() != vector_origin and attacker:VisibleVec(dmginfo:GetDamagePosition()) and dmginfo:GetDamagePosition() or vector_origin)
-            net.WriteUInt(armored and (ent:Armor() > 0 and 1 or 0) + (ent.phm_lastArmor > 0 and 2 or 0) or 0, 2)
-            net.WriteUInt(distance, 16)
-            net.WriteUInt(ammotable[ammo]*10, 6)
+            net.WriteUInt(ent.phm_lastHealth and ent.phm_lastHealth - vichp or dmginfo:GetDamage() or 0, 16) -- Damage
+            net.WriteBool(vicply or vicnpc) -- Player or npc
+            net.WriteBool((vicply and ent:LastHitGroup() == HITGROUP_HEAD) or ((vicnpc) and npcheadshotted) or false) -- Headshot
+            net.WriteBool(bit.band(dmgtype, DMG_BURN+DMG_DIRECT) == DMG_BURN+DMG_DIRECT or false) -- Burned
+            net.WriteBool(((vicply or vicnpc) and vichp <= 0) or (ent:GetNWInt("PFPropHealth", 1) <= 0) or false) -- Is prop
+            net.WriteVector(dmginfo:GetDamagePosition() != vector_origin and attacker:VisibleVec(dmginfo:GetDamagePosition()) and dmginfo:GetDamagePosition() or vector_origin) -- Attacker position
+            net.WriteUInt(armored and (ent:Armor() > 0 and 1 or 0) + (ent.phm_lastArmor > 0 and 2 or 0) or 0, 2) -- Armor
+            net.WriteUInt(distance, 16) -- Distance
+            net.WriteUInt(ammotable[ammo]*10, 6) -- Ammo type in gun
+            net.WriteUInt( ((dmgtype == DMG_CLUB or dmgtype == DMG_SLASH) and 1) or (dmgtype == DMG_BLAST and 2) or 0, 2) -- Melee or explosion or other dmg type (for skulls)
             net.Send(attacker)
             npcheadshotted = false
         end
@@ -113,6 +118,7 @@ else
     local hmkill = CreateClientConVar("profiteers_hitmarker_kill", "1", true, true, "Show kill indicators.", 0, 1)
     local hmfire = CreateClientConVar("profiteers_hitmarker_fire", "1", true, true, "Show afterburn indicators.", 0, 1)
     local hmprop = CreateClientConVar("profiteers_hitmarker_prop", "1", true, true, "Show prop (and other breakable entity) hit indicators.", 0, 1)
+    local skulls = CreateClientConVar("profiteers_skulls", "1", true, true, "Show how many enemys youve killed. very cruel.", 0, 1)
     local hmlength = 0.22 -- 0.5 if kill
     local hmrotata = 0
     local hmauth = 0
@@ -167,6 +173,8 @@ else
             pan:CheckBox("Enable directional damage indicators", "profiteers_dmgindicator_enable")
             pan:NumSlider("Damage indicator scale", "profiteers_dmgindicator_scale", 0.25, 2.5, 3)
             pan:Help("It's those arrows pointing toward where you were shot from.")
+            pan:ControlHelp("\nKillstreak skulls")
+            pan:CheckBox("Show killstreak skulls under crosshair", "profiteers_skulls")
         end)
 
         spawnmenu.AddToolMenuOption("Utilities", "Cool Hitmarkers", "profiteers_hitmarker_sv", "Server", "", "", function(pan)
@@ -194,6 +202,8 @@ else
             pan:CheckBox("Enable directional damage indicators", "profiteers_override_dmgindicator_enable")
             pan:NumSlider("Damage indicator scale", "profiteers_override_dmgindicator_scale", 0.25, 2.5, 3)
             pan:Help("It's those arrows pointing toward where you were shot from.")
+            pan:ControlHelp("\nKillstreak skulls")
+            pan:CheckBox("Show killstreak skulls under crosshair", "profiteers_override_skulls")
         end)
     end)
 
@@ -204,6 +214,17 @@ else
         return size * (bit.band(scale, 1) == 1 and (ScrH() / 480) or (ScrW() / 640)) * (bit.band(scale, 2) == 2 and iscale:GetFloat() or hscale:GetFloat())
     end
 
+    local skulltable = {}
+    local skullnextdelete = 0
+    local skullsmoothcount = 0
+    local skullsize = 10
+    local skulldecaytimeconstant = 4
+    local skulldecaytime = 4 -- +0.33s per kill in a streak
+    local matskull = Material("profiteers/skull.png", "noclamp smooth")
+    local matskullhs = Material("profiteers/skullhs.png", "noclamp smooth")
+    local matexplosion = Material("profiteers/explosion.png", "noclamp smooth")
+    local matmelee = Material("profiteers/knife.png", "noclamp smooth")
+    
     hook.Add("HUDPaint", "profiteers_hitmark_paint", function()
         if (hmauth and hmsv:GetInt() or hm:GetInt()) == 3 then return end
         local lp = LocalPlayer()
@@ -309,8 +330,53 @@ else
                 surface.DrawTexturedRectRotated(x, y, DoSize(34, 3), DoSize(34, 3), math.deg(-ang) - 90)
             end
         end
+
+        
+        if #skulltable > 0 then
+            skullsmoothcount = math.max(1, math.Round(Lerp(FrameTime()*5, skullsmoothcount, #skulltable), 5))
+            local wholeoffset = skullsmoothcount * DoSize(skullsize + 2) * 0.5
+            local skullsdecay = math.Clamp((skullnextdelete - ct) * skulldecaytime * 0.5, 0, 1)
+            local maxskulls = math.ceil((scrw * 0.5) / (DoSize(skullsize + 2)))
+            -- local maxskulls = 5
+
+            if #skulltable > maxskulls then 
+                skullsmoothcount = skullsmoothcount - 1 -- for noticable new skull
+                table.remove(skulltable, 1) 
+            end
+            
+            for k, v in pairs(skulltable) do -- hit indicators
+                local offsett = k * DoSize(skullsize + 2)
+                local fadein = math.ease.InQuart(math.min((1 - (v.time - ct) / skulldecaytime)*30, 1))
+
+                surface.SetMaterial(matskull)
+                if v.hs then
+                    surface.SetDrawColor(255, 58, 58, 200 * skullsdecay * fadein)
+                    surface.SetMaterial(matskullhs)
+                elseif v.exploded then
+                    surface.SetDrawColor(255, 137, 59, 200 * skullsdecay * fadein)
+                    surface.SetMaterial(matexplosion)
+                else
+                    surface.SetDrawColor(255, 255, 255, 200 * skullsdecay * fadein)
+                end
+
+                if v.meleed then
+                    surface.SetDrawColor(255, 58, 58, 200 * skullsdecay * fadein)
+                    surface.SetMaterial(matmelee)
+                end
+
+                surface.DrawTexturedRect(scrw * 0.5 - DoSize(skullsize * 0.5 + (skullsize + 2) * 0.5) + offsett - wholeoffset, scrh * 0.7, DoSize(skullsize), DoSize(skullsize))
+
+                if skullnextdelete < ct then
+                    skulltable = {}
+                    skullsmoothcount = 0
+                    skulldecaytime = skulldecaytimeconstant
+                    break
+                end
+            end
+        end
     end)
 
+    
     local function hitmarker()
         local sv = hmoverride:GetBool()
         local mode = sv and hmsv:GetInt() or hm:GetInt()
@@ -325,8 +391,26 @@ else
         local armored = net.ReadUInt(2)
         local distance = net.ReadUInt(16)
         local longrangemult = net.ReadUInt(6) * 0.1
+        local dmgtype = net.ReadUInt(2)
         local lp = LocalPlayer()
         local ct = CurTime()
+
+        if killed and (sv and skullssv or skulls):GetBool() then -- here cuz that line below
+            lasthmhead = head -- two params from below
+            lasthmkill = killed
+
+            skulldecaytime = skulldecaytimeconstant + #skulltable * 0.33
+            table.insert(skulltable, {
+                time = ct + skulldecaytime,
+                hs = lasthmhead,
+                meleed = dmgtype == 1,
+                exploded = dmgtype == 2,
+            })
+            skullnextdelete = ct + skulldecaytime
+            
+        end
+
+
         if lasthm > ct and lasthmkill then return end
         hmauth = sv
         lasthurt = dmg > 0
@@ -390,6 +474,7 @@ else
                 end
             end
         end)
+
     end
 
     net.Receive("profiteers_hitmark", hitmarker)
