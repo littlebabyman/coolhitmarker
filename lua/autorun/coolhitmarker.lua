@@ -38,19 +38,36 @@ if SERVER then
     local npcheadshotted = false -- fuck you garry
 
     local function hitmark(ent, dmginfo, took)
-        local attacker = dmginfo:GetAttacker()
+        local attacker, inflictor = dmginfo:GetAttacker(), dmginfo:GetInflictor()
+        if attacker:IsVehicle() and IsValid(attacker:GetDriver()) then attacker = attacker:GetDriver() end
         local attply, vicply = attacker:IsPlayer(), ent:IsPlayer()
         if (!attply and !vicply) then return end
-        if dmginfo:GetInflictor() == ent or attacker == ent then return end
+        if inflictor == ent or attacker == ent then return end
         local vichp = ent:Health()
-        if ent.phm_lastHealth and ent.phm_lastHealth == vichp and (!took and vichp == 0 or took) then return end
+        if ent.phm_lastHealth and ent.phm_lastHealth == vichp and (!took and (vichp == 0 or dmginfo:GetDamage() == 0) or took) then return end
         local vicnpc = ent:IsNextBot() or ent:IsNPC()
 
         if IsValid(ent) and IsValid(attacker) and attply then
             local distance = ent:GetPos():Distance(attacker:GetPos())
+            local dmgpos = dmginfo:GetDamagePosition()
             local swep = attacker:GetActiveWeapon()
             local ammo = swep:IsValid() and swep:IsScripted() and string.lower(swep.Primary.Ammo or "default") or "default"
             local armored = ent.Armor and isnumber(ent:Armor())
+            local dmg = math.Clamp(math.ceil(ent.phm_lastHealth and ent.phm_lastHealth - vichp or dmginfo:GetDamage() * 0.025), 0, 3)
+            local dmgtype = dmginfo:GetDamageType()
+            local sentient = vicply or vicnpc
+            local hitdata = 0
+            if sentient then hitdata = hitdata + 1 end
+            if bit.band(dmgtype, DMG_VEHICLE) != 0 then hitdata = hitdata + 128
+            else
+                if ent.LastHitGroup and ent:LastHitGroup() == HITGROUP_HEAD or npcheadshotted then hitdata = hitdata + 2 end
+                if dmginfo:GetInflictor() == attacker and dmginfo:GetDamageCustom() == 67 then hitdata = hitdata + 16
+                elseif bit.band(dmgtype, bit.bor(DMG_CLUB, DMG_SLASH)) != 0 then hitdata = hitdata + 32
+                elseif dmgtype == DMG_BLAST then hitdata = hitdata + 64 end
+            end
+            if bit.band(dmgtype, DMG_BURN+DMG_DIRECT) != 0 then hitdata = hitdata + 4 end
+            if (sentient and vichp <= 0) or (ent:GetNWInt("PFPropHealth", 1) <= 0) then hitdata = hitdata + 8 end
+
             if !ammotable[ammo] then ammo = "default" end
 
             if ammotable[ammo] == 0.3 then -- its shotgun, checking for slugs
@@ -61,17 +78,15 @@ if SERVER then
 
             -- if you making some gamemode you can add here check for distance and give more points/moneys for long kills
 
-            local dmgtype = dmginfo:GetDamageType()
-
             net.Start("profiteers_hitmark")
-            net.WriteUInt(ent.phm_lastHealth and ent.phm_lastHealth - vichp or dmginfo:GetDamage() or 0, 16) -- Damage
-            net.WriteUInt(dmgtype, 31) -- Damage type
-            net.WriteBool(vicply or vicnpc) -- Player or npc
-            net.WriteBool((vicply and ent:LastHitGroup() == HITGROUP_HEAD) or ((vicnpc) and npcheadshotted) or false) -- Headshot
+            net.WriteUInt(dmg or 0, 2) -- Damage
+            net.WriteUInt(hitdata, 10) -- Damage type
+            -- net.WriteBool(sentient) -- Sentient (Player or npc) or prop
+            -- net.WriteBool(ent.LastHitGroup and ent:LastHitGroup() == HITGROUP_HEAD or npcheadshotted or false) -- Headshot
             -- net.WriteBool(bit.band(dmgtype, DMG_BURN+DMG_DIRECT) == DMG_BURN+DMG_DIRECT or false) -- Burned, done on client
-            net.WriteBool(((vicply or vicnpc) and vichp <= 0) or (ent:GetNWInt("PFPropHealth", 1) <= 0) or false) -- Is prop
-            net.WriteVector(dmginfo:GetDamagePosition() != vector_origin and attacker:VisibleVec(dmginfo:GetDamagePosition()) and dmginfo:GetDamagePosition() or vector_origin) -- Attacker position
-            net.WriteBool(dmginfo:GetInflictor() == attacker and dmginfo:GetDamageCustom() == 67)
+            -- net.WriteBool((sentient and vichp <= 0) or (ent:GetNWInt("PFPropHealth", 1) <= 0) or false) -- Was killed
+            -- net.WriteBool(dmginfo:GetInflictor() == attacker and dmginfo:GetDamageCustom() == 67)
+            net.WriteVector(dmgpos != vector_origin and attacker:VisibleVec(dmgpos) and dmgpos or vector_origin) -- Attacker position
             net.WriteUInt(armored and (ent:Armor() > 0 and 1 or 0) + (ent.phm_lastArmor > 0 and 2 or 0) or 0, 2) -- Armor
             net.WriteUInt(distance, 16) -- Distance
             net.WriteUInt(ammotable[ammo]*10, 6) -- Ammo type in gun
@@ -80,7 +95,7 @@ if SERVER then
             npcheadshotted = false
         end
 
-        if IsValid(ent) and IsValid(attacker) and ent:IsPlayer() then -- hit indicators
+        if IsValid(ent) and IsValid(attacker) and ent:IsPlayer() and !ent:IsBot() then -- hit indicators
             net.Start("profiteers_gothit")
             net.WriteEntity(dmginfo:GetInflictor())
             net.WriteUInt((ent:IsPlayer() and (ent:Armor() > 0 and 1 or 0) + (ent.phm_lastArmor > 0 and 2 or 0)) or 0, 2)
@@ -228,6 +243,7 @@ else
     local matmelee = Material("profiteers/knife.png", "noclamp smooth")
     local matkick = Material("profiteers/kick.png", "noclamp smooth")
     local matkick2 = Material("profiteers/kick2.png", "noclamp smooth")
+    local matcar = Material("profiteers/car.png", "noclamp smooth")
     
     hook.Add("HUDPaint", "profiteers_hitmark_paint", function()
         if (hmauth and hmsv:GetInt() or hm:GetInt()) == 3 then return end
@@ -343,12 +359,13 @@ else
             local maxskulls = math.ceil((scrw * 0.5) / (DoSize(skullsize + 2)))
             -- local maxskulls = 5
 
+            if #skulltable == maxskulls and skulltable[1].fadein then skulltable[1].fadein = false skulltable[1].time = ct + 0.33 end
             if #skulltable > maxskulls then
                 skullsmoothcount = skullsmoothcount - 1 -- for noticable new skull
                 table.remove(skulltable, 1)
             end
             
-            for k, v in pairs(skulltable) do -- hit indicators
+            for k, v in pairs(skulltable) do -- kill indicators
                 local offsett = k * DoSize(skullsize + 2)
                 local fadein = math.ease.InQuart(math.min((1 - (v.time - ct) / skulldecaytime)*30, 1))
 
@@ -363,7 +380,9 @@ else
                     surface.SetDrawColor(255, 255, 255, 200 * skullsdecay * fadein)
                 end
 
-                if v.kicked then
+                if v.roadkill then
+                    surface.SetMaterial(matcar)
+                elseif v.kicked then
                     surface.SetMaterial(v.hs and matkick or matkick2)
                 elseif v.meleed then
                     surface.SetDrawColor(255, 58, 58, 200 * skullsdecay * fadein)
@@ -387,19 +406,18 @@ else
         local sv = hmoverride:GetBool()
         local mode = sv and hmsv:GetInt() or hm:GetInt()
         if mode <= 0 then return end
-        local dmg = net.ReadUInt(16)
-        local dmgtype = net.ReadUInt(31)
-        local isliving = net.ReadBool()
+        local dmg = net.ReadUInt(2)
+        local hitdata = net.ReadUInt(10)
+        local isliving = bit.band(hitdata, 1) != 0
         if dmg <= 0 and !isliving then return end
-        local head = net.ReadBool()
-        local onfire = bit.band(dmgtype, DMG_BURN+DMG_DIRECT) == DMG_BURN+DMG_DIRECT
-        local killed = net.ReadBool()
+        local head = bit.band(hitdata, 2) != 0
+        local onfire = bit.band(hitdata, 4) != 0
+        local killed = bit.band(hitdata, 8) != 0
+        local killtype = bit.band(hitdata, 16+32+64+128) / 16
         local pos = net.ReadVector()
-        local dspec = net.ReadBool()
         local armored = net.ReadUInt(2)
         local distance = net.ReadUInt(16)
         local longrangemult = net.ReadUInt(6) * 0.1
-        local killtype = ((dmgtype == DMG_CLUB or dmgtype == DMG_SLASH) and 1) or (dmgtype == DMG_BLAST and 2) or 0
         local lp = LocalPlayer()
         local ct = CurTime()
 
@@ -411,9 +429,11 @@ else
             table.insert(skulltable, {
                 time = ct + skulldecaytime,
                 hs = lasthmhead,
-                meleed = killtype == 1,
-                exploded = killtype == 2,
-                kicked = dspec,
+                kicked = killtype == 1,
+                meleed = killtype == 2,
+                exploded = killtype == 4,
+                roadkill = killtype == 8,
+                fadein = true,
             })
             skullnextdelete = ct + skulldecaytime
             
@@ -466,7 +486,7 @@ else
             if !lp then return end -- just to be sure
             if !lasthurt then surface.PlaySound("profiteers/hitmarkfail.ogg") return end
             -- juicer when many dmg
-            for i = 1, math.Clamp(math.ceil(dmg * 0.025), 1, 2) do
+            for i = 1, math.Clamp(dmg, 1, 2) do
                 if !onfire and head then
                     surface.PlaySound("profiteers/headmarker.ogg")
                 elseif armored == 3 then
@@ -491,7 +511,7 @@ else
     local function addgothit(attacker, armor)
         local lp = LocalPlayer()
         if !attacker:IsValid() then return end
-        local scrw, scrh = ScrW(), ScrH()
+        -- local scrw, scrh = ScrW(), ScrH()
 
         local hitVec =  attacker:GetPos() - lp:GetPos()
 
