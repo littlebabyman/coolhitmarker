@@ -44,10 +44,12 @@ if SERVER then
         if (!attply and !vicply) then return end
         if inflictor == ent or attacker == ent then return end
         local vichp = ent:Health()
-        if ent.phm_lastHealth and ent.phm_lastHealth == vichp and (!took and (vichp <= 0) or dmginfo:GetDamage() == 0 or took) then return end
+        local ct = CurTime()
+        if ent.phm_lastHealth and ent.phm_lastHealth == vichp and (!took and (vichp <= 0 or attacker.phm_lastMarker and attacker.phm_lastMarker > ct) or dmginfo:GetDamage() == 0 or took) then return end
         local vicnpc = ent:IsNextBot() or ent:IsNPC()
 
         if IsValid(ent) and IsValid(attacker) and attply then
+            attacker.phm_lastMarker = ct + 0.5 -- stop fucking shooting shit you cant hurt
             local distance = ent:GetPos():Distance(attacker:GetPos())
             local dmgpos = dmginfo:GetDamagePosition()
             local swep = attacker:GetActiveWeapon()
@@ -103,7 +105,7 @@ if SERVER then
             npcheadshotted = false
         end
 
-        if IsValid(ent) and IsValid(attacker) and ent:IsPlayer() and !ent:IsBot() then -- hit indicators
+        if took and IsValid(ent) and IsValid(attacker) and ent:IsPlayer() and !ent:IsBot() then -- hit indicators
             net.Start("profiteers_gothit")
             net.WriteEntity(dmginfo:GetInflictor())
             net.WriteUInt((ent:IsPlayer() and (ent:Armor() > 0 and 1 or 0) + (ent.phm_lastArmor > 0 and 2 or 0)) or 0, 2)
