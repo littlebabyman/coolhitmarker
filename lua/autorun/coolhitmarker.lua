@@ -57,16 +57,17 @@ if SERVER then
             local dmgtype = dmginfo:GetDamageType()
             local sentient = vicply or vicnpc
             local hitdata = 0
+            local killtype = 0
             if sentient then hitdata = hitdata + 1 end
-            if bit.band(dmgtype, DMG_VEHICLE) != 0 then hitdata = hitdata + 128
-            else
-                if ent.LastHitGroup and ent:LastHitGroup() == HITGROUP_HEAD or npcheadshotted then hitdata = hitdata + 2 end
-                if dmginfo:GetInflictor() == attacker and dmginfo:GetDamageCustom() == 67 then hitdata = hitdata + 16
-                elseif bit.band(dmgtype, bit.bor(DMG_CLUB, DMG_SLASH)) != 0 then hitdata = hitdata + 32
-                elseif dmgtype == DMG_BLAST then hitdata = hitdata + 64 end
-            end
+            if bit.band(dmgtype, bit.bor(DMG_VEHICLE, DMG_CRUSH)) == 0 and (ent.LastHitGroup and ent:LastHitGroup() == HITGROUP_HEAD or npcheadshotted) then hitdata = hitdata + 2 end
             if bit.band(dmgtype, DMG_BURN+DMG_DIRECT) != 0 then hitdata = hitdata + 4 end
             if (sentient and vichp <= 0) or (ent:GetNWInt("PFPropHealth", 1) <= 0) then hitdata = hitdata + 8 end
+            if inflictor:IsVehicle() and bit.band(dmgtype, bit.bor(DMG_VEHICLE, DMG_CRUSH)) != 0 then killtype = 4
+            elseif bit.band(dmgtype, DMG_CRUSH) != 0 then killtype = 5
+            elseif dmginfo:GetInflictor() == attacker and dmginfo:GetDamageCustom() == 67 then killtype = 1
+            elseif bit.band(dmgtype, bit.bor(DMG_CLUB, DMG_SLASH)) != 0 then killtype = 2
+            elseif dmgtype == DMG_BLAST then killtype = 3
+            end
 
             if !ammotable[ammo] then ammo = "default" end
 
@@ -80,15 +81,16 @@ if SERVER then
 
             net.Start("profiteers_hitmark")
             net.WriteUInt(dmg or 0, 2) -- Damage
-            net.WriteUInt(hitdata, 10) -- Damage type
+            net.WriteUInt(hitdata, 5) -- All the necessary data
+            net.WriteUInt(killtype, 3)
             -- net.WriteBool(sentient) -- Sentient (Player or npc) or prop
             -- net.WriteBool(ent.LastHitGroup and ent:LastHitGroup() == HITGROUP_HEAD or npcheadshotted or false) -- Headshot
             -- net.WriteBool(bit.band(dmgtype, DMG_BURN+DMG_DIRECT) == DMG_BURN+DMG_DIRECT or false) -- Burned, done on client
             -- net.WriteBool((sentient and vichp <= 0) or (ent:GetNWInt("PFPropHealth", 1) <= 0) or false) -- Was killed
             -- net.WriteBool(dmginfo:GetInflictor() == attacker and dmginfo:GetDamageCustom() == 67)
-            net.WriteVector(dmgpos != vector_origin and attacker:VisibleVec(dmgpos) and dmgpos or vector_origin) -- Attacker position
-            net.WriteUInt(armored and (ent:Armor() > 0 and 1 or 0) + (ent.phm_lastArmor > 0 and 2 or 0) or 0, 2) -- Armor
-            net.WriteUInt(distance, 16) -- Distance
+            net.WriteVector(dmgpos != vector_origin and attacker:VisibleVec(dmgpos) and dmgpos or vector_origin) -- Hit position
+            net.WriteUInt(armored and (ent:Armor() > 0 and 1 or 0) + (ent.phm_lastArmor > 0 and 2 or 0) or 0, 2) -- Armor and break
+            net.WriteUInt(distance, 16) -- Distance to hit
             net.WriteUInt(ammotable[ammo]*10, 6) -- Ammo type in gun
             -- net.WriteUInt( ((dmgtype == DMG_CLUB or dmgtype == DMG_SLASH) and 1) or (dmgtype == DMG_BLAST and 2) or 0, 2) -- Melee or explosion or other dmg type (for skulls), done on client
             net.Send(attacker)
@@ -382,8 +384,10 @@ else
 
                 if v.roadkill then
                     surface.SetMaterial(matcar)
+                elseif v.propkill then
+                    surface.SetMaterial(matkick)
                 elseif v.kicked then
-                    surface.SetMaterial(v.hs and matkick or matkick2)
+                    surface.SetMaterial(matkick2)
                 elseif v.meleed then
                     surface.SetDrawColor(255, 58, 58, 200 * skullsdecay * fadein)
                     surface.SetMaterial(matmelee)
@@ -402,18 +406,20 @@ else
     end)
 
     
-    local function hitmarker()
+    local function hitmarker(len)
+        print(len)
         local sv = hmoverride:GetBool()
         local mode = sv and hmsv:GetInt() or hm:GetInt()
         if mode <= 0 then return end
         local dmg = net.ReadUInt(2)
-        local hitdata = net.ReadUInt(10)
+        local hitdata = net.ReadUInt(5)
+        local killtype = net.ReadUInt(3)
         local isliving = bit.band(hitdata, 1) != 0
         if dmg <= 0 and !isliving then return end
         local head = bit.band(hitdata, 2) != 0
         local onfire = bit.band(hitdata, 4) != 0
         local killed = bit.band(hitdata, 8) != 0
-        local killtype = bit.band(hitdata, 16+32+64+128) / 16
+        -- local killtype = bit.band(hitdata, 16+32+64+128) / 16
         local pos = net.ReadVector()
         local armored = net.ReadUInt(2)
         local distance = net.ReadUInt(16)
@@ -431,8 +437,9 @@ else
                 hs = lasthmhead,
                 kicked = killtype == 1,
                 meleed = killtype == 2,
-                exploded = killtype == 4,
-                roadkill = killtype == 8,
+                exploded = killtype == 3,
+                roadkill = killtype == 4,
+                propkill = killtype == 5,
                 fadein = true,
             })
             skullnextdelete = ct + skulldecaytime
