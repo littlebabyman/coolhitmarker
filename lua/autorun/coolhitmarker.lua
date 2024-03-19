@@ -44,7 +44,7 @@ if SERVER then
         if (!attply and !vicply) then return end
         if inflictor == ent or attacker == ent then return end
         local vichp = ent:Health()
-        if ent.phm_lastHealth and ent.phm_lastHealth == vichp and (!took and (vichp == 0 or dmginfo:GetDamage() == 0) or took) then return end
+        if ent.phm_lastHealth and ent.phm_lastHealth == vichp and (!took and (vichp <= 0) or dmginfo:GetDamage() == 0 or took) then return end
         local vicnpc = ent:IsNextBot() or ent:IsNPC()
 
         if IsValid(ent) and IsValid(attacker) and attply then
@@ -410,16 +410,15 @@ else
     end)
 
     
-    local function hitmarker(len)
-        print(len)
+    local function hitmarker()
         local sv = hmoverride:GetBool()
         local mode = sv and hmsv:GetInt() or hm:GetInt()
         if mode <= 0 then return end
         local dmg = net.ReadUInt(2)
+        print(dmg)
         local hitdata = net.ReadUInt(5)
         local killtype = net.ReadUInt(3)
         local isliving = bit.band(hitdata, 1) != 0
-        if dmg <= 0 and !isliving then return end
         local head = bit.band(hitdata, 2) != 0
         local onfire = bit.band(hitdata, 4) != 0
         local killed = bit.band(hitdata, 8) != 0
@@ -428,6 +427,7 @@ else
         local armored = net.ReadUInt(2)
         local distance = net.ReadUInt(16)
         local longrangemult = net.ReadUInt(6) * 0.1
+        if dmg <= 0 and !isliving then print("why?") return end
         local lp = LocalPlayer()
         local ct = CurTime()
 
