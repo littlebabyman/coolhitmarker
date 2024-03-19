@@ -372,7 +372,7 @@ else
             local maxskulls = math.ceil((scrw * 0.5) / (DoSize(skullsize + 2)))
             -- local maxskulls = 5
 
-            if #skulltable == maxskulls and skulltable[1].fadein then skulltable[1].fadein = false skulltable[1].time = ct + 0.33 end
+            -- if #skulltable == maxskulls and skulltable[1].fadein then skulltable[1].fadein = false skulltable[1].time = ct + 0.33 end
             if #skulltable > maxskulls then
                 skullsmoothcount = skullsmoothcount - 1 -- for noticable new skull
                 table.remove(skulltable, 1)
@@ -382,6 +382,7 @@ else
                 local offsett = k * DoSize(skullsize + 2)
                 local fadein = math.ease.InQuart(math.min((1 - (v.time - ct) / skulldecaytime)*30, 1))
 
+                surface.SetDrawColor(255, 255, 255, 200 * skullsdecay * fadein)
                 surface.SetMaterial(matskull)
                 if v.hs then
                     surface.SetDrawColor(255, 58, 58, 200 * skullsdecay * fadein)
@@ -392,8 +393,6 @@ else
                 elseif v.burned then
                     surface.SetDrawColor(255, 137, 59, 200 * skullsdecay * fadein)
                     surface.SetMaterial(matfire)
-                else
-                    surface.SetDrawColor(255, 255, 255, 200 * skullsdecay * fadein)
                 end
 
                 if v.roadkill then
@@ -519,12 +518,12 @@ else
                     surface.PlaySound("profiteers/mwhitmarker.ogg")
                 end
 
-                if killed then
-                    timer.Simple(0.03, function()
-                        if !IsValid(lp) then return end -- just to be sure
-                        surface.PlaySound("profiteers/newkillmarker.ogg")
-                    end)
-                end
+            end
+            if killed then
+                timer.Simple(0.03, function()
+                    if !IsValid(lp) then return end -- just to be sure
+                    surface.PlaySound("profiteers/newkillmarker.ogg")
+                end)
             end
         end)
 
