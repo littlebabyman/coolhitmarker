@@ -64,9 +64,10 @@ if SERVER then
             if (sentient and vichp <= 0) or (ent:GetNWInt("PFPropHealth", 1) <= 0) then hitdata = hitdata + 8 end
             if inflictor:IsVehicle() and bit.band(dmgtype, bit.bor(DMG_VEHICLE, DMG_CRUSH)) != 0 then killtype = 4
             elseif bit.band(dmgtype, DMG_CRUSH) != 0 then killtype = 5
-            elseif dmginfo:GetInflictor() == attacker and dmginfo:GetDamageCustom() == 67 then killtype = 1
+            elseif inflictor == attacker and dmginfo:GetDamageCustom() == 67 then killtype = 1
             elseif bit.band(dmgtype, bit.bor(DMG_CLUB, DMG_SLASH)) != 0 then killtype = 2
-            elseif dmgtype == DMG_BLAST then killtype = 3
+            elseif bit.band(dmgtype, DMG_BLAST) != 0 then killtype = 3
+            elseif bit.band(dmgtype, DMG_BURN+DMG_DIRECT) != 0 then killtype = 6
             end
 
             if !ammotable[ammo] then ammo = "default" end
@@ -82,7 +83,7 @@ if SERVER then
             net.Start("profiteers_hitmark")
             net.WriteUInt(dmg or 0, 2) -- Damage
             net.WriteUInt(hitdata, 5) -- All the necessary data
-            net.WriteUInt(killtype, 3)
+            net.WriteUInt(killtype, 3) -- Type of kill damage
             -- net.WriteBool(sentient) -- Sentient (Player or npc) or prop
             -- net.WriteBool(ent.LastHitGroup and ent:LastHitGroup() == HITGROUP_HEAD or npcheadshotted or false) -- Headshot
             -- net.WriteBool(bit.band(dmgtype, DMG_BURN+DMG_DIRECT) == DMG_BURN+DMG_DIRECT or false) -- Burned, done on client
@@ -378,6 +379,9 @@ else
                 elseif v.exploded then
                     surface.SetDrawColor(255, 137, 59, 200 * skullsdecay * fadein)
                     surface.SetMaterial(matexplosion)
+                elseif v.burned then
+                    surface.SetDrawColor(255, 137, 59, 200 * skullsdecay * fadein)
+                    surface.SetMaterial(matfire)
                 else
                     surface.SetDrawColor(255, 255, 255, 200 * skullsdecay * fadein)
                 end
@@ -440,6 +444,7 @@ else
                 exploded = killtype == 3,
                 roadkill = killtype == 4,
                 propkill = killtype == 5,
+                burned = killtype == 6,
                 fadein = true,
             })
             skullnextdelete = ct + skulldecaytime
