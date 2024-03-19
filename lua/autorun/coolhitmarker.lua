@@ -64,11 +64,12 @@ if SERVER then
             if (sentient and vichp <= 0) or (ent:GetNWInt("PFPropHealth", 1) <= 0) then
                 hitdata = hitdata + 2
                 if inflictor == attacker and dmginfo:GetDamageCustom() == 67 then killtype = 1
-                elseif bit.band(dmgtype, bit.bor(DMG_CLUB, DMG_SLASH)) != 0 then killtype = 2
+                elseif inflictor:IsWeapon() and bit.band(dmgtype, bit.bor(DMG_CLUB, DMG_SLASH)) != 0 then killtype = 2
                 elseif bit.band(dmgtype, DMG_BLAST) != 0 then killtype = 3
                 elseif inflictor:IsVehicle() and bit.band(dmgtype, bit.bor(DMG_VEHICLE, DMG_CRUSH)) != 0 then killtype = 4
-                elseif bit.band(dmgtype, DMG_CRUSH) != 0 then killtype = 5
-                elseif bit.band(dmgtype, DMG_BURN+DMG_DIRECT) != 0 then killtype = 6
+                elseif bit.band(dmgtype, DMG_DISSOLVE) != 0 then killtype = 5
+                elseif bit.band(dmgtype, DMG_CRUSH) != 0 then killtype = 6
+                elseif bit.band(dmgtype, DMG_BURN+DMG_DIRECT) != 0 then killtype = 7
                 end
             end
             if (ent.LastHitGroup and ent:LastHitGroup() == HITGROUP_HEAD or npcheadshotted) then
@@ -121,11 +122,12 @@ if SERVER then
     hook.Add("EntityTakeDamage", "profiteers_hitmarkers", function(target, dmginfo)
 
         -- largely copied idea from hit numbers
-        if !target:IsValid() then return end
+        if !target:IsValid() or dmginfo:GetDamage() <= 0 then return end
         if dmginfo:GetAttacker():IsPlayer() and dmginfo:IsDamageType(DMG_BURN+DMG_SLOWBURN) then target.phm_lastAttacker = dmginfo:GetAttacker() end
         if target.phm_lastAttacker and dmginfo:IsDamageType(DMG_BURN+DMG_SLOWBURN) then
             dmginfo:SetAttacker(target.phm_lastAttacker)
         end
+        print(dmginfo:GetDamage(), target:Health())
         if target.Armor then
             target.phm_lastArmor = target:Armor() or 0
         end
@@ -254,6 +256,8 @@ else
     local matkick = Material("profiteers/kick.png", "noclamp smooth")
     local matkick2 = Material("profiteers/kick2.png", "noclamp smooth")
     local matcar = Material("profiteers/car.png", "noclamp smooth")
+    local matball = Material("profiteers/dissolve.png", "noclamp smooth")
+    local matprop = Material("profiteers/propkill.png", "noclamp smooth")
     
     hook.Add("HUDPaint", "profiteers_hitmark_paint", function()
         if (hmauth and hmsv:GetInt() or hm:GetInt()) == 3 then return end
@@ -395,8 +399,10 @@ else
 
                 if v.roadkill then
                     surface.SetMaterial(matcar)
+                elseif v.dissolve then
+                    surface.SetMaterial(matball)
                 elseif v.propkill then
-                    surface.SetMaterial(matkick)
+                    surface.SetMaterial(matprop)
                 elseif v.kicked then
                     surface.SetMaterial(matkick2)
                 elseif v.meleed then
@@ -449,8 +455,9 @@ else
                 meleed = killtype == 2,
                 exploded = killtype == 3,
                 roadkill = killtype == 4,
-                propkill = killtype == 5,
-                burned = killtype == 6,
+                dissolve = killtype == 5,
+                propkill = killtype == 6,
+                burned = killtype == 7,
                 fadein = true,
             })
             skullnextdelete = ct + skulldecaytime
