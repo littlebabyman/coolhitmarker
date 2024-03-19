@@ -127,7 +127,6 @@ if SERVER then
         if target.phm_lastAttacker and dmginfo:IsDamageType(DMG_BURN+DMG_SLOWBURN) then
             dmginfo:SetAttacker(target.phm_lastAttacker)
         end
-        print(dmginfo:GetDamage(), target:Health())
         if target.Armor then
             target.phm_lastArmor = target:Armor() or 0
         end
