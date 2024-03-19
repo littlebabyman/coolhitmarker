@@ -59,16 +59,21 @@ if SERVER then
             local hitdata = 0
             local killtype = 0
             if sentient then hitdata = hitdata + 1 end
-            if bit.band(dmgtype, bit.bor(DMG_VEHICLE, DMG_CRUSH)) == 0 and (ent.LastHitGroup and ent:LastHitGroup() == HITGROUP_HEAD or npcheadshotted) then hitdata = hitdata + 2 end
-            if bit.band(dmgtype, DMG_BURN+DMG_DIRECT) != 0 then hitdata = hitdata + 4 end
-            if (sentient and vichp <= 0) or (ent:GetNWInt("PFPropHealth", 1) <= 0) then hitdata = hitdata + 8 end
-            if inflictor:IsVehicle() and bit.band(dmgtype, bit.bor(DMG_VEHICLE, DMG_CRUSH)) != 0 then killtype = 4
-            elseif bit.band(dmgtype, DMG_CRUSH) != 0 then killtype = 5
-            elseif inflictor == attacker and dmginfo:GetDamageCustom() == 67 then killtype = 1
-            elseif bit.band(dmgtype, bit.bor(DMG_CLUB, DMG_SLASH)) != 0 then killtype = 2
-            elseif bit.band(dmgtype, DMG_BLAST) != 0 then killtype = 3
-            elseif bit.band(dmgtype, DMG_BURN+DMG_DIRECT) != 0 then killtype = 6
+            if (sentient and vichp <= 0) or (ent:GetNWInt("PFPropHealth", 1) <= 0) then
+                hitdata = hitdata + 2
+                if inflictor == attacker and dmginfo:GetDamageCustom() == 67 then killtype = 1
+                elseif bit.band(dmgtype, bit.bor(DMG_CLUB, DMG_SLASH)) != 0 then killtype = 2
+                elseif bit.band(dmgtype, DMG_BLAST) != 0 then killtype = 3
+                elseif inflictor:IsVehicle() and bit.band(dmgtype, bit.bor(DMG_VEHICLE, DMG_CRUSH)) != 0 then killtype = 4
+                elseif bit.band(dmgtype, DMG_CRUSH) != 0 then killtype = 5
+                elseif bit.band(dmgtype, DMG_BURN+DMG_DIRECT) != 0 then killtype = 6
+                end
             end
+            if (ent.LastHitGroup and ent:LastHitGroup() == HITGROUP_HEAD or npcheadshotted) then
+                hitdata = hitdata + 4
+                if ent.SetLastHitGroup then ent:SetLastHitGroup(HITGROUP_GENERIC) end
+            end
+            if bit.band(dmgtype, DMG_BURN+DMG_DIRECT) != 0 then hitdata = hitdata + 8 end
 
             if !ammotable[ammo] then ammo = "default" end
 
@@ -419,9 +424,9 @@ else
         local hitdata = net.ReadUInt(5)
         local killtype = net.ReadUInt(3)
         local isliving = bit.band(hitdata, 1) != 0
-        local head = bit.band(hitdata, 2) != 0
-        local onfire = bit.band(hitdata, 4) != 0
-        local killed = bit.band(hitdata, 8) != 0
+        local killed = bit.band(hitdata, 2) != 0
+        local head = bit.band(hitdata, 4) != 0
+        local onfire = bit.band(hitdata, 8) != 0
         -- local killtype = bit.band(hitdata, 16+32+64+128) / 16
         local pos = net.ReadVector()
         local armored = net.ReadUInt(2)
