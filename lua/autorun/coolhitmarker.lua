@@ -420,7 +420,6 @@ else
         local mode = sv and hmsv:GetInt() or hm:GetInt()
         if mode <= 0 then return end
         local dmg = net.ReadUInt(2)
-        print(dmg)
         local hitdata = net.ReadUInt(5)
         local killtype = net.ReadUInt(3)
         local isliving = bit.band(hitdata, 1) != 0
@@ -432,7 +431,7 @@ else
         local armored = net.ReadUInt(2)
         local distance = net.ReadUInt(16)
         local longrangemult = net.ReadUInt(6) * 0.1
-        if dmg <= 0 and !isliving then print("why?") return end
+        if dmg <= 0 and !isliving then return end
         local lp = LocalPlayer()
         local ct = CurTime()
 
