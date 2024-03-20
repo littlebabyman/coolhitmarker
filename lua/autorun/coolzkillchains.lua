@@ -33,6 +33,10 @@ if SERVER then
                 local dmgtype = dmginfo:GetDamageType()
                 local hs = false
                 local killtype = 0
+                if (ent.LastHitGroup and ent:LastHitGroup() == HITGROUP_HEAD or npcheadshotted) then
+                    hs = true
+                    if ent.SetLastHitGroup then ent:SetLastHitGroup(HITGROUP_GENERIC) end
+                end
                 if (vichp <= 0) then
                     if inflictor == attacker and dmginfo:GetDamageCustom() == 67 then killtype = 1
                     elseif inflictor:IsWeapon() and bit.band(dmgtype, bit.bor(DMG_CLUB, DMG_SLASH)) != 0 then killtype = 2
@@ -42,23 +46,13 @@ if SERVER then
                     elseif bit.band(dmgtype, DMG_CRUSH) != 0 then killtype = 6
                     elseif bit.band(dmgtype, DMG_BURN+DMG_DIRECT) != 0 then killtype = 7
                     end
+
+                    net.Start("profiteers_hitmark_FALLBACK")
+                    net.WriteBool(hs) -- Headshot or not
+                    net.WriteUInt(killtype, 3) -- Type of kill damage
+                    net.Send(attacker)
                 end
-                if (ent.LastHitGroup and ent:LastHitGroup() == HITGROUP_HEAD or npcheadshotted) then
-                    hs = true
-                    if ent.SetLastHitGroup then ent:SetLastHitGroup(HITGROUP_GENERIC) end
-                end
-    
-                -- if you making some gamemode you can add here check for distance and give more points/moneys for long kills
-    
-                net.Start("profiteers_hitmark_FALLBACK")
-                -- net.WriteUInt(0, 2) -- Damage -- DO NOT NEED IN FALLBACK
-                net.WriteBool(hs) -- Headshot or not
-                net.WriteUInt(killtype, 3) -- Type of kill damage
-                -- net.WriteVector(vector_origin) -- Hit position -- DO NOT NEED IN FALLBACK
-                -- net.WriteUInt(0, 2) -- Armor and break -- DO NOT NEED IN FALLBACK
-                -- net.WriteUInt(0, 16) -- Distance to hit -- DO NOT NEED IN FALLBACK
-                -- net.WriteUInt(0, 6) -- Ammo type in gun -- DO NOT NEED IN FALLBACK
-                net.Send(attacker)
+                
                 npcheadshotted = false
             end
         end
