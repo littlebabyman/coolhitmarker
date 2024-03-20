@@ -150,7 +150,8 @@ else
             for k, v in pairs(skulltable) do -- skulls
                 local offsett = k * DoSize2(skullsize + 2)
                 local fadein = math.ease.InQuart(math.min((1 - (v.time - ct) / skulldecaytime)*30, 1))
-
+                local scalein = 1 + (1 - fadein) * 0.75
+                
                 surface.SetDrawColor(255, 255, 255, 200 * skullsdecay * fadein)
                 surface.SetMaterial(matskull)
                 if v.hs then
@@ -176,8 +177,9 @@ else
                     surface.SetDrawColor(255, 58, 58, 200 * skullsdecay * fadein)
                     surface.SetMaterial(matmelee)
                 end
-
-                surface.DrawTexturedRect(scrw * 0.5 - DoSize2(skullsize * 0.5 + (skullsize + 2) * 0.5) + offsett - wholeoffset, scrh * verticaloffset, DoSize2(skullsize), DoSize2(skullsize))
+                
+                local localskullsize = skullsize * scalein
+                surface.DrawTexturedRect(scrw * 0.5 - DoSize2(localskullsize * 0.5 + (localskullsize) * 0.5 + 1) + DoSize2((scalein - 1) * 4) + offsett - wholeoffset, scrh * verticaloffset - DoSize2(localskullsize * 0.5), DoSize2(localskullsize), DoSize2(localskullsize))
 
                 if skullnextdelete < ct then
                     skulltable = {}
