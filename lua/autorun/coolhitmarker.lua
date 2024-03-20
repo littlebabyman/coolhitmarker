@@ -309,7 +309,7 @@ else
                 end
             end
 
-            if (dist:GetInt() == 2 and lasthmkill or dist:GetInt() == 1) and lastdistantshot > ct then -- long range hits
+            if (lasthmkill and dist:GetInt() == 2 or dist:GetInt() == 1) and lastdistantshot > ct then -- long range hits
                 local state = (lastdistantshot - ct) * 2
                 local message = (lasthmkill and lasthmhead) and "Long range HEADSHOT!!" or lasthmkill and "Long range kill!" or "Long range hit"
                 -- surface.SetFont("CGHUD_7_Shadow")
@@ -340,7 +340,7 @@ else
                     local hitVec = v.hitvec
                     local armorBreak = v.armor
                     local ang = math.atan2(hitVec.x, hitVec.y) + math.rad(lp:EyeAngles().y) + 3.14
-                    local x, y = scrw/2 + math.cos(ang) * DoSize(60, 3), scrh/2 + math.sin(ang) * DoSize(60, 3)
+                    local x, y = scrw * 0.5 + math.cos(ang) * DoSize(60, 3), scrh * 0.5 + math.sin(ang) * DoSize(60, 3)
 
                     if armorBreak > 0 then
                         surface.SetDrawColor(119, 119, 255, decay)
@@ -371,7 +371,6 @@ else
         local killed = bit.band(hitdata, 2) != 0
         local head = bit.band(hitdata, 4) != 0
         local onfire = bit.band(hitdata, 8) != 0
-        -- local killtype = bit.band(hitdata, 16+32+64+128) / 16
         local pos = net.ReadVector()
         local armored = net.ReadUInt(2)
         local distance = net.ReadUInt(16)
