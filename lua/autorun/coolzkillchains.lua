@@ -134,6 +134,7 @@ else
     local matcar = Material("profiteers/car.png", "noclamp smooth")
     local matball = Material("profiteers/dissolve.png", "noclamp smooth")
     local matprop = Material("profiteers/propkill.png", "noclamp smooth")
+    local matfire = Material("profiteers/fire.png", "noclamp smooth")
 
     hook.Add("HUDPaint", "profiteers_hitmark_paint_killchains", function()
         if !(hmauth and skullssv:GetBool() or skulls:GetBool()) then return end
