@@ -22,20 +22,18 @@ if SERVER then
             local attacker, inflictor = dmginfo:GetAttacker(), dmginfo:GetInflictor()
             if attacker:IsVehicle() and IsValid(attacker:GetDriver()) then attacker = attacker:GetDriver() end
             local attply, vicply = attacker:IsPlayer(), ent:IsPlayer()
-            if !attply then return end
+            if !attply or !took or dmginfo:GetDamage() <= 0 then return end
             if inflictor == ent or attacker == ent then return end
             local vichp = ent:Health()
             -- local ct = CurTime()
             -- if ent.phm_lastHealth and ent.phm_lastHealth == vichp and (!took and (vichp <= 0 or attacker.phm_lastMarker and attacker.phm_lastMarker > ct) or dmginfo:GetDamage() == 0 or took) then return end
             local vicnpc = ent:IsNextBot() or ent:IsNPC()
     
-            if IsValid(ent) and IsValid(attacker) and attply then
+            if IsValid(ent) and IsValid(attacker) and attply and (vicply or vicnpc) then
                 local dmgtype = dmginfo:GetDamageType()
-                local sentient = vicply or vicnpc
-                if !sentient or !took or dmginfo:GetDamage() <= 0 then return end
                 local hs = false
                 local killtype = 0
-                if (sentient and vichp <= 0) then
+                if (vichp <= 0) then
                     if inflictor == attacker and dmginfo:GetDamageCustom() == 67 then killtype = 1
                     elseif inflictor:IsWeapon() and bit.band(dmgtype, bit.bor(DMG_CLUB, DMG_SLASH)) != 0 then killtype = 2
                     elseif bit.band(dmgtype, DMG_BLAST) != 0 then killtype = 3
@@ -66,12 +64,11 @@ if SERVER then
         end
     
         -- fuck you garry
-        hook.Add("ScaleNPCDamage", "profiteers_killchain_npcheadshots", function(ent, hitgroup, dmginfo)
-            if !dmginfo:GetAttacker():IsPlayer() then return end
-            npcheadshotted = IsValid(ent) and IsValid(dmginfo:GetAttacker()) and hitgroup == HITGROUP_HEAD
+        hook.Add("ScaleNPCDamage", "profiteers_hitmarkers_npcheadshots", function(ent, hitgroup, dmginfo)
+            npcheadshotted = IsValid(ent) and IsValid(dmginfo:GetAttacker()) and dmginfo:GetAttacker():IsPlayer() and hitgroup == HITGROUP_HEAD
         end)
 
-        hook.Add("PostEntityTakeDamage", "profiteers_killchain", fallbackhitmarker)
+        hook.Add("PostEntityTakeDamage", "profiteers_hitmarkers", fallbackhitmarker)
     end
 else
     local skulls = usefallback and CreateClientConVar("profiteers_skulls", "1", true, true, "Show how many enemys youve killed. very cruel.", 0, 1) or GetConVar("profiteers_skulls")
