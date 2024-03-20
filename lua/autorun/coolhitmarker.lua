@@ -206,7 +206,7 @@ else
                 pan:ControlHelp("\n\n\n\n\nBest used with:")
                 local btn = pan:Button("Cool™ Killchains <3")
                 btn.DoClick = function()
-                    gui.OpenURL("https://steamcommunity.com/sharedfiles/filedetails/?id=2987119816") -- uhh please edit link to the killchains page later
+                    gui.OpenURL("https://steamcommunity.com/sharedfiles/filedetails/?id=3193486764") -- uhh please edit link to the killchains page later
                 end
             end
         end)
