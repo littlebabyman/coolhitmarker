@@ -382,7 +382,7 @@ else
 
         if CoolKillchainsInstalled then
             if killed and (sv and skullssv or skulls):GetBool() then -- here cuz that line below
-                CoolKillchainFunction(head, killed, killtype, sv)
+                CoolKillchainFunction(head, killtype, sv)
             end
         end
 
