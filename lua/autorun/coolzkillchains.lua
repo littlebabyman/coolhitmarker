@@ -33,7 +33,8 @@ if SERVER then
                 local dmgtype = dmginfo:GetDamageType()
                 local sentient = vicply or vicnpc
                 if !sentient or !took or dmginfo:GetDamage() <= 0 then return end
-                local hitdata = false
+                local hs = false
+                local killtype = 0
                 if (sentient and vichp <= 0) then
                     if inflictor == attacker and dmginfo:GetDamageCustom() == 67 then killtype = 1
                     elseif inflictor:IsWeapon() and bit.band(dmgtype, bit.bor(DMG_CLUB, DMG_SLASH)) != 0 then killtype = 2
@@ -45,7 +46,7 @@ if SERVER then
                     end
                 end
                 if (ent.LastHitGroup and ent:LastHitGroup() == HITGROUP_HEAD or npcheadshotted) then
-                    hitdata = true
+                    hs = true
                     if ent.SetLastHitGroup then ent:SetLastHitGroup(HITGROUP_GENERIC) end
                 end
     
@@ -53,7 +54,7 @@ if SERVER then
     
                 net.Start("profiteers_hitmark_FALLBACK")
                 -- net.WriteUInt(0, 2) -- Damage -- DO NOT NEED IN FALLBACK
-                net.WriteBool(hitdata) -- Headshot or not
+                net.WriteBool(hs) -- Headshot or not
                 net.WriteUInt(killtype, 3) -- Type of kill damage
                 -- net.WriteVector(vector_origin) -- Hit position -- DO NOT NEED IN FALLBACK
                 -- net.WriteUInt(0, 2) -- Armor and break -- DO NOT NEED IN FALLBACK
@@ -108,7 +109,6 @@ else
 
     local hmauth = 0
     local lasthmhead = false
-    local lasthmkill = false
 
     -- hush
     local function DoSize2(size, scale)
@@ -198,9 +198,8 @@ else
         end
     end)
 
-    function CoolKillchainFunction(head, killed, killtype, sv)
+    function CoolKillchainFunction(head, killtype, sv)
         lasthmhead = head -- two params from below
-        lasthmkill = killed
 
         local ct = CurTime()
         skulldecaytime = skulldecaytimeconstant + #skulltable * 0.33
@@ -226,19 +225,10 @@ else
         local function fallbackhitmarker()
             local sv = hmoverride:GetBool()
             if !(sv and skullssv:GetBool() or skulls:GetBool()) then return end
-            local hitdata = net.ReadUInt(5)
+            local head = net.ReadBool()
             local killtype = net.ReadUInt(3)
-            local isliving = bit.band(hitdata, 1) != 0
-            local killed = bit.band(hitdata, 2) != 0
-            local head = bit.band(hitdata, 4) != 0
-            local onfire = bit.band(hitdata, 8) != 0
-            if !isliving then return end -- if dmg <= 0 and !isliving then return end
-            local lp = LocalPlayer()
-            local ct = CurTime()
 
-            if killed then -- here cuz that line below
-                CoolKillchainFunction(head, killed, killtype, sv)
-            end
+            CoolKillchainFunction(head, killtype, sv)
             
         end
 
