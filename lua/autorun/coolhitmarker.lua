@@ -177,7 +177,7 @@ else
     local matarmorbreak = Material("profiteers/hiteffectarmorbroken.png", "noclamp smooth")
     
     hook.Add("PopulateToolMenu", "profiteers_hitmark_options", function()
-        spawnmenu.AddToolMenuOption("Utilities", "Cool Hitmarkers", "profiteers_hitmarker_cl", "Client", "", "", function(pan)
+        spawnmenu.AddToolMenuOption("Utilities", "Cool Hitmarkers", "profiteers_hitmarker_cl", "Hitmarkers - Client", "", "", function(pan)
             pan:ControlHelp("\nHitmarkers")
             local mode = pan:ComboBox("Hitmarker mode", "profiteers_hitmarker_enable")
             mode:SetSortItems(false)
@@ -201,12 +201,18 @@ else
             pan:CheckBox("Enable directional damage indicators", "profiteers_dmgindicator_enable")
             pan:NumSlider("Damage indicator scale", "profiteers_dmgindicator_scale", 0.25, 2.5, 3)
             pan:Help("It's those arrows pointing toward where you were shot from.")
-            pan:ControlHelp("\nKillstreak skulls")
-            pan:CheckBox("Show killstreak skulls under crosshair", "profiteers_skulls")
+
+            if !CoolKillchainsInstalled then
+                pan:ControlHelp("\n\n\n\n\nBest used with:")
+                local btn = pan:Button("Cool™ Killchains <3")
+                btn.DoClick = function()
+                    gui.OpenURL("https://steamcommunity.com/sharedfiles/filedetails/?id=2987119816") -- uhh please edit link to the killchains page later
+                end
+            end
         end)
 
-        spawnmenu.AddToolMenuOption("Utilities", "Cool Hitmarkers", "profiteers_hitmarker_sv", "Server", "", "", function(pan)
-            pan:CheckBox("Use server hitmarker settings", "profiteers_override_enabled")
+        spawnmenu.AddToolMenuOption("Utilities", "Cool Hitmarkers", "profiteers_hitmarker_sv", "Hitmarkers - Server", "", "", function(pan)
+            pan:CheckBox("Force those server hitmarker settings below for every player", "profiteers_override_enabled")
             pan:ControlHelp("\nHitmarkers")
             local mode = pan:ComboBox("Hitmarker mode", "profiteers_override_hitmarker_enable")
             mode:SetSortItems(false)
@@ -230,8 +236,6 @@ else
             pan:CheckBox("Enable directional damage indicators", "profiteers_override_dmgindicator_enable")
             pan:NumSlider("Damage indicator scale", "profiteers_override_dmgindicator_scale", 0.25, 2.5, 3)
             pan:Help("It's those arrows pointing toward where you were shot from.")
-            pan:ControlHelp("\nKillstreak skulls")
-            pan:CheckBox("Show killstreak skulls under crosshair", "profiteers_override_skulls")
         end)
     end)
 
@@ -241,28 +245,12 @@ else
         local iscale, hscale = (hmauth and indicatorscalesv or indicatorscale), (hmauth and hmscalesv or hmscale)
         return size * (bit.band(scale, 1) == 1 and (ScrH() / 480) or (ScrW() / 640)) * (bit.band(scale, 2) == 2 and iscale:GetFloat() or hscale:GetFloat())
     end
-
-    local skulltable = {}
-    local skullnextdelete = 0
-    local skullsmoothcount = 0
-    local skullsize = 10
-    local skulldecaytimeconstant = 4
-    local skulldecaytime = 4 -- +0.33s per kill in a streak
-    local matskull = Material("profiteers/skull.png", "noclamp smooth")
-    local matskullhs = Material("profiteers/skullhs.png", "noclamp smooth")
-    local matexplosion = Material("profiteers/explosion.png", "noclamp smooth")
-    local matmelee = Material("profiteers/knife.png", "noclamp smooth")
-    local matkick = Material("profiteers/kick.png", "noclamp smooth")
-    local matkick2 = Material("profiteers/kick2.png", "noclamp smooth")
-    local matcar = Material("profiteers/car.png", "noclamp smooth")
-    local matball = Material("profiteers/dissolve.png", "noclamp smooth")
-    local matprop = Material("profiteers/propkill.png", "noclamp smooth")
     
     hook.Add("HUDPaint", "profiteers_hitmark_paint", function()
         local modee = (hmauth and hmsv:GetInt() or hm:GetInt())
         local novisual = modee == 0 or modee == 3
 
-        if novisual and !(hmauth and skullssv:GetBool() or skulls:GetBool()) then return end
+        if novisual then return end
 
         local lp = LocalPlayer()
         local ct = CurTime()
@@ -369,68 +357,13 @@ else
                 end
             end
         end
-
-        
-        if #skulltable > 0 then
-            skullsmoothcount = math.max(1, math.Round(Lerp(FrameTime()*5, skullsmoothcount, #skulltable), 5))
-            local wholeoffset = skullsmoothcount * DoSize(skullsize + 2) * 0.5
-            local skullsdecay = math.Clamp((skullnextdelete - ct) * skulldecaytime * 0.5, 0, 1)
-            local maxskulls = math.ceil((scrw * 0.5) / (DoSize(skullsize + 2)))
-            -- local maxskulls = 5
-
-            -- if #skulltable == maxskulls and skulltable[1].fadein then skulltable[1].fadein = false skulltable[1].time = ct + 0.33 end
-            if #skulltable > maxskulls then
-                skullsmoothcount = skullsmoothcount - 1 -- for noticable new skull
-                table.remove(skulltable, 1)
-            end
-            
-            for k, v in pairs(skulltable) do -- skulls
-                local offsett = k * DoSize(skullsize + 2)
-                local fadein = math.ease.InQuart(math.min((1 - (v.time - ct) / skulldecaytime)*30, 1))
-
-                surface.SetDrawColor(255, 255, 255, 200 * skullsdecay * fadein)
-                surface.SetMaterial(matskull)
-                if v.hs then
-                    surface.SetDrawColor(255, 58, 58, 200 * skullsdecay * fadein)
-                    surface.SetMaterial(matskullhs)
-                elseif v.exploded then
-                    surface.SetDrawColor(255, 137, 59, 200 * skullsdecay * fadein)
-                    surface.SetMaterial(matexplosion)
-                elseif v.burned then
-                    surface.SetDrawColor(255, 137, 59, 200 * skullsdecay * fadein)
-                    surface.SetMaterial(matfire)
-                end
-
-                if v.roadkill then
-                    surface.SetMaterial(matcar)
-                elseif v.dissolve then
-                    surface.SetMaterial(matball)
-                elseif v.propkill then
-                    surface.SetMaterial(matprop)
-                elseif v.kicked then
-                    surface.SetMaterial(matkick2)
-                elseif v.meleed then
-                    surface.SetDrawColor(255, 58, 58, 200 * skullsdecay * fadein)
-                    surface.SetMaterial(matmelee)
-                end
-
-                surface.DrawTexturedRect(scrw * 0.5 - DoSize(skullsize * 0.5 + (skullsize + 2) * 0.5) + offsett - wholeoffset, scrh * 0.7, DoSize(skullsize), DoSize(skullsize))
-
-                if skullnextdelete < ct then
-                    skulltable = {}
-                    skullsmoothcount = 0
-                    skulldecaytime = skulldecaytimeconstant
-                    break
-                end
-            end
-        end
     end)
 
     
     local function hitmarker()
         local sv = hmoverride:GetBool()
         local mode = sv and hmsv:GetInt() or hm:GetInt()
-        if mode <= 0 and !(sv and skullssv:GetInt() or skulls:GetInt()) then return end
+        if mode <= 0 and !(sv and skullssv:GetBool() or skulls:GetBool()) then return end
         local dmg = net.ReadUInt(2)
         local hitdata = net.ReadUInt(5)
         local killtype = net.ReadUInt(3)
@@ -447,25 +380,10 @@ else
         local lp = LocalPlayer()
         local ct = CurTime()
 
-        if killed and (sv and skullssv or skulls):GetBool() then -- here cuz that line below
-            lasthmhead = head -- two params from below
-            lasthmkill = killed
-
-            skulldecaytime = skulldecaytimeconstant + #skulltable * 0.33
-            table.insert(skulltable, {
-                time = ct + skulldecaytime,
-                hs = lasthmhead,
-                kicked = killtype == 1,
-                meleed = killtype == 2,
-                exploded = killtype == 3,
-                roadkill = killtype == 4,
-                dissolve = killtype == 5,
-                propkill = killtype == 6,
-                burned = killtype == 7,
-                fadein = true,
-            })
-            skullnextdelete = ct + skulldecaytime
-            
+        if CoolKillchainsInstalled then
+            if killed and (sv and skullssv or skulls):GetBool() then -- here cuz that line below
+                CoolKillchainFunction(head, killed, killtype, sv)
+            end
         end
 
 
