@@ -259,7 +259,11 @@ else
     local matprop = Material("profiteers/propkill.png", "noclamp smooth")
     
     hook.Add("HUDPaint", "profiteers_hitmark_paint", function()
-        if (hmauth and hmsv:GetInt() or hm:GetInt()) == 3 then return end
+        local modee = (hmauth and hmsv:GetInt() or hm:GetInt())
+        local novisual = modee == 0 or modee == 3
+
+        if novisual and !(hmauth and skullssv:GetBool() or skulls:GetBool()) then return end
+
         local lp = LocalPlayer()
         local ct = CurTime()
         local scrw, scrh = ScrW(), ScrH()
@@ -267,100 +271,102 @@ else
         local x, y = 0 < lasthmtbl.x and lasthmtbl.x < scrw and lasthmtbl.x or scrw * 0.5, 0 < lasthmtbl.y and lasthmtbl.y < scrh and lasthmtbl.y or scrh * 0.5
         local dist, ind = (hmauth and distantshotsv or distantshot), (hmauth and indicatorssv or indicators)
 
-        if lasthm > ct then -- any hitmarkers
-            local state = (lasthm - ct) / hmlength
-            -- hmrotata = math.max(0, hmrotata - FrameTime()*300)
-            hmrotata = Lerp(FrameTime()*25, hmrotata, 0)
-            local armor = (hmauth and hmarmorsv or hmarmor)
-            local fire = (hmauth and hmfiresv or hmfire)
-            local kill = (hmauth and hmkillsv or hmkill)
-            local head = (hmauth and hmheadsv or hmhead)
+        if !novisual then
+            if lasthm > ct then -- any hitmarkers
+                local state = (lasthm - ct) / hmlength
+                -- hmrotata = math.max(0, hmrotata - FrameTime()*300)
+                hmrotata = Lerp(FrameTime()*25, hmrotata, 0)
+                local armor = (hmauth and hmarmorsv or hmarmor)
+                local fire = (hmauth and hmfiresv or hmfire)
+                local kill = (hmauth and hmkillsv or hmkill)
+                local head = (hmauth and hmheadsv or hmhead)
 
-            if lasthmprop or fire:GetBool() and lasthmfire or !lasthurt then
-                surface.SetMaterial(hmmat3)
-            elseif armor:GetBool() and lasthmarmor == 2 then
-                surface.SetMaterial(hmmat4)
-            else
-                surface.SetMaterial(head:GetBool() and lasthmhead and hmmat2 or hmmat)
-            end
-            
-            if kill:GetBool() and lasthmkill then
-                surface.SetDrawColor(255, 0, 0, alpha * state)
-            elseif armor:GetBool() and lasthmarmor > 0 then
-                surface.SetDrawColor(119, 119, 255, alpha * state)
-            else
-                surface.SetDrawColor(255, 255, 255, alpha * state)
-            end
-
-            -- surface.DrawTexturedRect(x - DoSize(6) - DoSize(8) * state, y - DoSize(6) - DoSize(8) * state, DoSize(12) + DoSize(16) * state, DoSize(12) + DoSize(16) * state)
-            surface.DrawTexturedRectRotated(x, y, DoSize(12) + DoSize(16) * state, DoSize(12) + DoSize(16) * state, hmrotata)
-
-            if armor:GetBool() and lasthmarmor > 0 then
-                surface.SetDrawColor(119, 119, 255, alpha * state)
-                if lasthmarmor == 3 then -- armor damage
-                    surface.SetMaterial(matarmor)
+                if lasthmprop or fire:GetBool() and lasthmfire or !lasthurt then
+                    surface.SetMaterial(hmmat3)
+                elseif armor:GetBool() and lasthmarmor == 2 then
+                    surface.SetMaterial(hmmat4)
                 else
-                    surface.SetMaterial(matarmorb)
+                    surface.SetMaterial(head:GetBool() and lasthmhead and hmmat2 or hmmat)
                 end
-                surface.DrawTexturedRect(x + DoSize(16), y - DoSize(12), DoSize(8), DoSize(8))
-            end
-            if lasthmprop then -- prop damage
-                surface.SetDrawColor(255, 255, 255, alpha * state)
-                surface.SetMaterial(matgear)
-                surface.DrawTexturedRect(x + DoSize(16), y + DoSize(4), DoSize(8), DoSize(8))
-            end
-            if fire:GetBool() and lasthmfire then -- afterburn damage
-                surface.SetDrawColor(255, 255, 255, alpha * state)
-                surface.SetMaterial(matfire)
-                surface.DrawTexturedRect(x - DoSize(4), y + DoSize(16), DoSize(8), DoSize(8))
-            end
-        end
-
-        if (dist:GetInt() == 2 and lasthmkill or dist:GetInt() == 1) and lastdistantshot > ct then -- long range hits
-            local state = (lastdistantshot - ct) * 2
-            local message = (lasthmkill and lasthmhead) and "Long range HEADSHOT!!" or lasthmkill and "Long range kill!" or "Long range hit"
-            -- surface.SetFont("CGHUD_7_Shadow")
-            surface.SetFont(ARC9 and "ARC9_8_Glow" or "GModNotify")
-            surface.SetTextColor(0, 0, 0, 255 * state)
-            surface.SetTextPos(scrw * 0.5 + DoSize(25) + 1, scrh * 0.5 + 1)
-            surface.DrawText(message)
-            surface.SetTextPos(scrw * 0.5 + DoSize(25) + 1, scrh * 0.5 + 20 + 1)
-            surface.DrawText(lasthmdistance .. " m")
-            -- surface.SetFont("CGHUD_7")
-            surface.SetFont(ARC9 and "ARC9_8" or "GModNotify")
-            surface.SetTextColor(255, lasthmkill and 75 or 255, lasthmkill and 75 or 255, 255 * state)
-            surface.SetTextPos(scrw * 0.5 + DoSize(25), scrh * 0.5)
-            surface.DrawText(message)
-            surface.SetTextColor(300 - 255 * (lasthmdistance / 400), 300 - 255 * (lasthmdistance / 400), 255, 255 * state)
-            surface.SetTextPos(scrw * 0.5 + DoSize(25), scrh * 0.5 + 20)
-            surface.DrawText(lasthmdistance .. " m")
-        end
-
-        if ind:GetBool() then
-            for k, v in ipairs(hitindicators) do -- hit indicators
-                local decay = math.max(0, (v.time - ct)) * 30
-
-                if decay <= 0 then
-                    table.remove(hitindicators, k) -- removing old stains
+                
+                if kill:GetBool() and lasthmkill then
+                    surface.SetDrawColor(255, 0, 0, alpha * state)
+                elseif armor:GetBool() and lasthmarmor > 0 then
+                    surface.SetDrawColor(119, 119, 255, alpha * state)
+                else
+                    surface.SetDrawColor(255, 255, 255, alpha * state)
                 end
 
-                local hitVec = v.hitvec
-                local armorBreak = v.armor
-                local ang = math.atan2(hitVec.x, hitVec.y) + math.rad(lp:EyeAngles().y) + 3.14
-                local x, y = scrw/2 + math.cos(ang) * DoSize(60, 3), scrh/2 + math.sin(ang) * DoSize(60, 3)
+                -- surface.DrawTexturedRect(x - DoSize(6) - DoSize(8) * state, y - DoSize(6) - DoSize(8) * state, DoSize(12) + DoSize(16) * state, DoSize(12) + DoSize(16) * state)
+                surface.DrawTexturedRectRotated(x, y, DoSize(12) + DoSize(16) * state, DoSize(12) + DoSize(16) * state, hmrotata)
 
-                if armorBreak > 0 then
-                    surface.SetDrawColor(119, 119, 255, decay)
-                    if armorBreak == 2 then
-                        surface.SetMaterial(matarmorbreak)
+                if armor:GetBool() and lasthmarmor > 0 then
+                    surface.SetDrawColor(119, 119, 255, alpha * state)
+                    if lasthmarmor == 3 then -- armor damage
+                        surface.SetMaterial(matarmor)
                     else
-                        surface.SetMaterial(matarmorhit)
+                        surface.SetMaterial(matarmorb)
                     end
-                else
-                    surface.SetDrawColor(255, 255, 255, decay)
-                    surface.SetMaterial(matgothit)
+                    surface.DrawTexturedRect(x + DoSize(16), y - DoSize(12), DoSize(8), DoSize(8))
                 end
-                surface.DrawTexturedRectRotated(x, y, DoSize(34, 3), DoSize(34, 3), math.deg(-ang) - 90)
+                if lasthmprop then -- prop damage
+                    surface.SetDrawColor(255, 255, 255, alpha * state)
+                    surface.SetMaterial(matgear)
+                    surface.DrawTexturedRect(x + DoSize(16), y + DoSize(4), DoSize(8), DoSize(8))
+                end
+                if fire:GetBool() and lasthmfire then -- afterburn damage
+                    surface.SetDrawColor(255, 255, 255, alpha * state)
+                    surface.SetMaterial(matfire)
+                    surface.DrawTexturedRect(x - DoSize(4), y + DoSize(16), DoSize(8), DoSize(8))
+                end
+            end
+
+            if (dist:GetInt() == 2 and lasthmkill or dist:GetInt() == 1) and lastdistantshot > ct then -- long range hits
+                local state = (lastdistantshot - ct) * 2
+                local message = (lasthmkill and lasthmhead) and "Long range HEADSHOT!!" or lasthmkill and "Long range kill!" or "Long range hit"
+                -- surface.SetFont("CGHUD_7_Shadow")
+                surface.SetFont(ARC9 and "ARC9_8_Glow" or "GModNotify")
+                surface.SetTextColor(0, 0, 0, 255 * state)
+                surface.SetTextPos(scrw * 0.5 + DoSize(25) + 1, scrh * 0.5 + 1)
+                surface.DrawText(message)
+                surface.SetTextPos(scrw * 0.5 + DoSize(25) + 1, scrh * 0.5 + 20 + 1)
+                surface.DrawText(lasthmdistance .. " m")
+                -- surface.SetFont("CGHUD_7")
+                surface.SetFont(ARC9 and "ARC9_8" or "GModNotify")
+                surface.SetTextColor(255, lasthmkill and 75 or 255, lasthmkill and 75 or 255, 255 * state)
+                surface.SetTextPos(scrw * 0.5 + DoSize(25), scrh * 0.5)
+                surface.DrawText(message)
+                surface.SetTextColor(300 - 255 * (lasthmdistance / 400), 300 - 255 * (lasthmdistance / 400), 255, 255 * state)
+                surface.SetTextPos(scrw * 0.5 + DoSize(25), scrh * 0.5 + 20)
+                surface.DrawText(lasthmdistance .. " m")
+            end
+
+            if ind:GetBool() then
+                for k, v in ipairs(hitindicators) do -- hit indicators
+                    local decay = math.max(0, (v.time - ct)) * 30
+
+                    if decay <= 0 then
+                        table.remove(hitindicators, k) -- removing old stains
+                    end
+
+                    local hitVec = v.hitvec
+                    local armorBreak = v.armor
+                    local ang = math.atan2(hitVec.x, hitVec.y) + math.rad(lp:EyeAngles().y) + 3.14
+                    local x, y = scrw/2 + math.cos(ang) * DoSize(60, 3), scrh/2 + math.sin(ang) * DoSize(60, 3)
+
+                    if armorBreak > 0 then
+                        surface.SetDrawColor(119, 119, 255, decay)
+                        if armorBreak == 2 then
+                            surface.SetMaterial(matarmorbreak)
+                        else
+                            surface.SetMaterial(matarmorhit)
+                        end
+                    else
+                        surface.SetDrawColor(255, 255, 255, decay)
+                        surface.SetMaterial(matgothit)
+                    end
+                    surface.DrawTexturedRectRotated(x, y, DoSize(34, 3), DoSize(34, 3), math.deg(-ang) - 90)
+                end
             end
         end
 
@@ -378,7 +384,7 @@ else
                 table.remove(skulltable, 1)
             end
             
-            for k, v in pairs(skulltable) do -- kill indicators
+            for k, v in pairs(skulltable) do -- skulls
                 local offsett = k * DoSize(skullsize + 2)
                 local fadein = math.ease.InQuart(math.min((1 - (v.time - ct) / skulldecaytime)*30, 1))
 
@@ -424,7 +430,7 @@ else
     local function hitmarker()
         local sv = hmoverride:GetBool()
         local mode = sv and hmsv:GetInt() or hm:GetInt()
-        if mode <= 0 then return end
+        if mode <= 0 and !(sv and skullssv:GetInt() or skulls:GetInt()) then return end
         local dmg = net.ReadUInt(2)
         local hitdata = net.ReadUInt(5)
         local killtype = net.ReadUInt(3)
@@ -499,7 +505,7 @@ else
 
         lasthm = ct + hmlength
 
-        if mode == 2 then return end
+        if mode == 0 or mode == 2 then return end
 
         if armored == 2 then -- seperate armor break sond without delay
             surface.PlaySound("profiteers/breakarmorr.ogg")
