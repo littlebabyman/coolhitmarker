@@ -22,7 +22,7 @@ if SERVER then
             local attacker, inflictor = dmginfo:GetAttacker(), dmginfo:GetInflictor()
             if attacker:IsVehicle() and IsValid(attacker:GetDriver()) then attacker = attacker:GetDriver() end
             local attply, vicply = attacker:IsPlayer(), ent:IsPlayer()
-            if (!attply and !vicply) then return end
+            if !attply then return end
             if inflictor == ent or attacker == ent then return end
             local vichp = ent:Health()
             -- local ct = CurTime()
@@ -32,11 +32,9 @@ if SERVER then
             if IsValid(ent) and IsValid(attacker) and attply then
                 local dmgtype = dmginfo:GetDamageType()
                 local sentient = vicply or vicnpc
-                local hitdata = 0
-                local killtype = 0
-                if sentient then hitdata = hitdata + 1 end
+                if !sentient or !took or dmginfo:GetDamage() <= 0 then return end
+                local hitdata = false
                 if (sentient and vichp <= 0) then
-                    hitdata = hitdata + 2
                     if inflictor == attacker and dmginfo:GetDamageCustom() == 67 then killtype = 1
                     elseif inflictor:IsWeapon() and bit.band(dmgtype, bit.bor(DMG_CLUB, DMG_SLASH)) != 0 then killtype = 2
                     elseif bit.band(dmgtype, DMG_BLAST) != 0 then killtype = 3
@@ -47,16 +45,15 @@ if SERVER then
                     end
                 end
                 if (ent.LastHitGroup and ent:LastHitGroup() == HITGROUP_HEAD or npcheadshotted) then
-                    hitdata = hitdata + 4
+                    hitdata = true
                     if ent.SetLastHitGroup then ent:SetLastHitGroup(HITGROUP_GENERIC) end
                 end
-                if bit.band(dmgtype, DMG_BURN+DMG_DIRECT) != 0 then hitdata = hitdata + 8 end
     
                 -- if you making some gamemode you can add here check for distance and give more points/moneys for long kills
     
                 net.Start("profiteers_hitmark_FALLBACK")
                 -- net.WriteUInt(0, 2) -- Damage -- DO NOT NEED IN FALLBACK
-                net.WriteUInt(hitdata, 5) -- All the necessary data
+                net.WriteBool(hitdata) -- Headshot or not
                 net.WriteUInt(killtype, 3) -- Type of kill damage
                 -- net.WriteVector(vector_origin) -- Hit position -- DO NOT NEED IN FALLBACK
                 -- net.WriteUInt(0, 2) -- Armor and break -- DO NOT NEED IN FALLBACK
@@ -68,11 +65,12 @@ if SERVER then
         end
     
         -- fuck you garry
-        hook.Add("ScaleNPCDamage", "profiteers_hitmarkers_npcheadshots", function(ent, hitgroup, dmginfo)
-            npcheadshotted = IsValid(ent) and IsValid(dmginfo:GetAttacker()) and dmginfo:GetAttacker():IsPlayer() and hitgroup == HITGROUP_HEAD
+        hook.Add("ScaleNPCDamage", "profiteers_killchain_npcheadshots", function(ent, hitgroup, dmginfo)
+            if !dmginfo:GetAttacker():IsPlayer() then return end
+            npcheadshotted = IsValid(ent) and IsValid(dmginfo:GetAttacker()) and hitgroup == HITGROUP_HEAD
         end)
 
-        hook.Add("PostEntityTakeDamage", "profiteers_hitmarkers", fallbackhitmarker)
+        hook.Add("PostEntityTakeDamage", "profiteers_killchain", fallbackhitmarker)
     end
 else
     local skulls = usefallback and CreateClientConVar("profiteers_skulls", "1", true, true, "Show how many enemys youve killed. very cruel.", 0, 1) or GetConVar("profiteers_skulls")
