@@ -54,7 +54,7 @@ if SERVER then
             local dmgpos = dmginfo:GetDamagePosition()
             local swep = attacker:GetActiveWeapon()
             local ammo = swep:IsValid() and swep:IsScripted() and string.lower(swep.Primary.Ammo or "default") or "default"
-            local armored = ent.Armor and isnumber(ent:Armor())
+            local armored = ent.Armor and isnumber(ent:Armor()) and ent.phm_lastArmor
             local dmg = math.Clamp(math.ceil(ent.phm_lastHealth and ent.phm_lastHealth - vichp or dmginfo:GetDamage() * 0.025), 0, 3)
             local dmgtype = dmginfo:GetDamageType()
             local sentient = vicply or vicnpc
@@ -106,10 +106,10 @@ if SERVER then
             npcheadshotted = false
         end
 
-        if took and IsValid(ent) and IsValid(attacker) and ent:IsPlayer() and !ent:IsBot() then -- hit indicators
+        if took and IsValid(ent) and IsValid(attacker) and vicply and !ent:IsBot() then -- hit indicators
             net.Start("profiteers_gothit")
-            net.WriteEntity(dmginfo:GetInflictor())
-            net.WriteUInt((ent:IsPlayer() and (ent:Armor() > 0 and 1 or 0) + ((ent.phm_lastArmor or 0) > 0 and 2 or 0)) or 0, 2)
+            net.WriteEntity(inflictor)
+            net.WriteUInt((vicply and (ent:Armor() > 0 and 1 or 0) + ((ent.phm_lastArmor or 0) > 0 and 2 or 0)) or 0, 2)
             net.Send(ent)
         end
     end
