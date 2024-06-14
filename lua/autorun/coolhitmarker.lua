@@ -51,7 +51,7 @@ if SERVER then
         if IsValid(ent) and IsValid(attacker) and attply then
             attacker.phm_lastMarker = ct + 0.5 -- stop fucking shooting shit you cant hurt
             local distance = ent:GetPos():Distance(attacker:GetPos())
-            local dmgpos = dmginfo:GetDamagePosition()
+            local dmgpos = (inflictor:IsWeapon() or inflictor:IsPlayer()) and dmginfo:GetDamagePosition() or ent:WorldSpaceCenter()
             local swep = attacker:GetActiveWeapon()
             local ammo = swep:IsValid() and swep:IsScripted() and string.lower(swep.Primary.Ammo or "default") or "default"
             local armored = ent.Armor and isnumber(ent:Armor()) and ent.phm_lastArmor
@@ -87,7 +87,6 @@ if SERVER then
             end
 
             -- if you making some gamemode you can add here check for distance and give more points/moneys for long kills
-
             net.Start("profiteers_hitmark")
             net.WriteUInt(dmg or 0, 2) -- Damage
             net.WriteUInt(hitdata, 5) -- All the necessary data
@@ -97,7 +96,7 @@ if SERVER then
             -- net.WriteBool(bit.band(dmgtype, DMG_BURN+DMG_DIRECT) == DMG_BURN+DMG_DIRECT or false) -- Burned, done on client
             -- net.WriteBool((sentient and vichp <= 0) or (ent:GetNWInt("PFPropHealth", 1) <= 0) or false) -- Was killed
             -- net.WriteBool(dmginfo:GetInflictor() == attacker and dmginfo:GetDamageCustom() == 67)
-            net.WriteVector(dmgpos != vector_origin and attacker:VisibleVec(dmgpos) and dmgpos or vector_origin) -- Hit position
+            net.WriteNormal(dmgpos != vector_origin and attacker:VisibleVec(dmgpos) and (dmgpos-attacker:EyePos()):GetNormalized() or vector_origin) -- Hit position
             net.WriteUInt(armored and (ent:Armor() > 0 and 1 or 0) + ((ent.phm_lastArmor or 0) > 0 and 2 or 0) or 0, 2) -- Armor and break
             net.WriteUInt(distance, 16) -- Distance to hit
             net.WriteUInt(ammotable[ammo]*10, 6) -- Ammo type in gun
@@ -360,7 +359,7 @@ else
     end)
 
     
-    local function hitmarker()
+    local function hitmarker(...)
         local sv = hmoverride:GetBool()
         local mode = sv and hmsv:GetInt() or hm:GetInt()
         if mode <= 0 and !(sv and skullssv:GetBool() or skulls:GetBool()) then return end
@@ -371,7 +370,7 @@ else
         local killed = bit.band(hitdata, 2) != 0
         local head = bit.band(hitdata, 4) != 0
         local onfire = bit.band(hitdata, 8) != 0
-        local pos = net.ReadVector()
+        local pos = net.ReadNormal()
         local armored = net.ReadUInt(2)
         local distance = net.ReadUInt(16)
         local longrangemult = net.ReadUInt(6) * 0.1
@@ -399,6 +398,8 @@ else
         lasthmtbl = {x = ScrW() * 0.5, y = ScrH() * 0.5, visible = false }
 
         if (sv and hmpossv or hmpos):GetBool() and lasthmpos != vector_origin then
+            pos = lp:EyePos()-lp:GetAimVector()+pos*distance
+
             cam.Start3D()
 
             local toscr = pos:ToScreen()
