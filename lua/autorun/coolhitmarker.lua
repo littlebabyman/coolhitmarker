@@ -54,7 +54,8 @@ if SERVER then
             local dmgpos = (inflictor:IsWeapon() or inflictor:IsPlayer()) and dmginfo:GetDamagePosition() or ent:WorldSpaceCenter()
             local swep = attacker:GetActiveWeapon()
             local ammo = swep:IsValid() and swep:IsScripted() and string.lower(swep.Primary.Ammo or "default") or "default"
-            local armored = ent.Armor and isnumber(ent:Armor()) and ent.phm_lastArmor
+            local armor = ent.Armor and (tonumber(ent.Armor) or (isnumber(ent:Armor()) and ent:Armor()))
+            local armored = armor and ent.phm_lastArmor
             local dmg = math.Clamp(math.ceil(ent.phm_lastHealth and ent.phm_lastHealth - vichp or dmginfo:GetDamage() * 0.025), 0, 3)
             local dmgtype = dmginfo:GetDamageType()
             local sentient = vicply or vicnpc
@@ -97,7 +98,7 @@ if SERVER then
             -- net.WriteBool((sentient and vichp <= 0) or (ent:GetNWInt("PFPropHealth", 1) <= 0) or false) -- Was killed
             -- net.WriteBool(dmginfo:GetInflictor() == attacker and dmginfo:GetDamageCustom() == 67)
             net.WriteNormal(dmgpos != vector_origin and attacker:VisibleVec(dmgpos) and (dmgpos-attacker:EyePos()):GetNormalized() or vector_origin) -- Hit position
-            net.WriteUInt(armored and (ent:Armor() > 0 and 1 or 0) + ((ent.phm_lastArmor or 0) > 0 and 2 or 0) or 0, 2) -- Armor and break
+            net.WriteUInt(armored and (armor > 0 and 1 or 0) + ((ent.phm_lastArmor or 0) > 0 and 2 or 0) or 0, 2) -- Armor and break
             net.WriteUInt(distance, 16) -- Distance to hit
             net.WriteUInt(ammotable[ammo]*10, 6) -- Ammo type in gun
             -- net.WriteUInt( ((dmgtype == DMG_CLUB or dmgtype == DMG_SLASH) and 1) or (dmgtype == DMG_BLAST and 2) or 0, 2) -- Melee or explosion or other dmg type (for skulls), done on client
@@ -126,8 +127,9 @@ if SERVER then
         if target.phm_lastAttacker and dmginfo:IsDamageType(DMG_BURN+DMG_SLOWBURN) then
             dmginfo:SetAttacker(target.phm_lastAttacker)
         end
-        if target.Armor and isnumber(target:Armor()) then
-            target.phm_lastArmor = target:Armor() or 0
+        if target.Armor then
+            local armor = tonumber(target.Armor) or (isnumber(target:Armor()) and target:Armor())
+            target.phm_lastArmor = armor or 0
         end
         target.phm_lastHealth = target:Health() or 0
     end)
