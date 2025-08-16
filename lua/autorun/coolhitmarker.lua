@@ -56,7 +56,8 @@ if SERVER then
             local ammo = swep:IsValid() and swep:IsScripted() and string.lower(swep.Primary.Ammo or "default") or "default"
             local armor = ent.Armor and (tonumber(ent.Armor) or (isnumber(ent:Armor()) and ent:Armor()))
             local armored = armor and ent.phm_lastArmor
-            local dmg = math.Clamp(math.ceil(ent.phm_lastHealth and ent.phm_lastHealth - vichp or dmginfo:GetDamage() * 0.025), 0, 3)
+            if dmginfo:GetDamage() == 0 then return end
+            local dmg = math.Clamp(math.ceil(ent.phm_lastHealth and ent.phm_lastHealth - vichp or dmginfo:GetDamage() * 0.025), 0, 1023)
             local dmgtype = dmginfo:GetDamageType()
             local sentient = vicply or vicnpc
             local hitdata = 0
@@ -73,9 +74,10 @@ if SERVER then
                 elseif bit.band(dmgtype, DMG_BURN+DMG_DIRECT) != 0 then killtype = 7
                 end
             end
+            
             if (ent.LastHitGroup and ent:LastHitGroup() == HITGROUP_HEAD or npcheadshotted) then
                 hitdata = hitdata + 4
-                if ent.SetLastHitGroup then ent:SetLastHitGroup(HITGROUP_GENERIC) end
+                -- if ent.SetLastHitGroup then ent:SetLastHitGroup(HITGROUP_GENERIC) end -- why?
             end
             if bit.band(dmgtype, DMG_BURN+DMG_DIRECT) != 0 then hitdata = hitdata + 8 end
 
@@ -390,8 +392,6 @@ else
             end
         end
 
-
-        if lasthm > ct and lasthmkill then return end
         hmauth = sv
         lasthurt = dmg > 0
         lasthmhead = head
@@ -419,6 +419,8 @@ else
         lasthmarmor = armored
         lasthmprop = !isliving
         hmlength = (armored == 2 or killed) and 0.5 or 0.22
+
+        if lasthm > ct and lasthmkill then return end -- should this even exist? blocks new hitmarkers right after kill
 
         if isliving then
             if !onfire and distance > longrangeshot * longrangemult and lasthurt then
