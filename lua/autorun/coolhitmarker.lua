@@ -499,7 +499,7 @@ else
         lasthm = ct + hmlength
 
         if mode == 0 or mode == 2 then return end
-        -- using EmitSound will never have excessive sound delays
+        -- using EmitSound will never have excessive sound delays; also enables volume adjustment
         if armored == 2 then -- seperate armor break sond without delay
             EmitSound("CoolHitmarker.HitArmorBreak", vector_origin, -1, CHAN_STATIC, volume)
         end
