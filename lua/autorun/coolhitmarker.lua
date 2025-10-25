@@ -57,7 +57,7 @@ if SERVER then
             local armor = ent.Armor and (tonumber(ent.Armor) or (isnumber(ent:Armor()) and ent:Armor()))
             local armored = armor and ent.phm_lastArmor
             if dmginfo:GetDamage() == 0 then return end
-            local dmg = math.Clamp(math.ceil(ent.phm_lastHealth and ent.phm_lastHealth - vichp or dmginfo:GetDamage() * 0.025), 0, 3)
+            local dmg = math.Clamp(math.ceil(ent.phm_lastHealth and ent.phm_lastHealth - vichp or dmginfo:GetDamage() * 0.025), 0, 1023)
             local dmgtype = dmginfo:GetDamageType()
             local sentient = vicply or vicnpc
             local hitdata = 0
@@ -76,7 +76,7 @@ if SERVER then
             end
             if (ent.LastHitGroup and ent:LastHitGroup() == HITGROUP_HEAD or npcheadshotted) then
                 hitdata = hitdata + 4
-                if ent.SetLastHitGroup then ent:SetLastHitGroup(HITGROUP_GENERIC) end
+                -- if ent.SetLastHitGroup then ent:SetLastHitGroup(HITGROUP_GENERIC) end
             end
             if bit.band(dmgtype, DMG_BURN+DMG_DIRECT) != 0 then hitdata = hitdata + 8 end
 
@@ -90,7 +90,7 @@ if SERVER then
 
             -- if you making some gamemode you can add here check for distance and give more points/moneys for long kills
             net.Start("profiteers_hitmark")
-            net.WriteUInt(dmg or 0, 2) -- Damage
+            net.WriteUInt(dmg or 0, 32) -- Damage
             net.WriteUInt(hitdata, 5) -- All the necessary data
             net.WriteUInt(killtype, 3) -- Type of kill damage
             -- net.WriteBool(sentient) -- Sentient (Player or npc) or prop
@@ -437,7 +437,7 @@ else
         local sv = hmoverride:GetBool()
         local mode = sv and hmsv:GetInt() or hm:GetInt()
         if mode <= 0 and !(sv and skullssv:GetBool() or skulls:GetBool()) then return end
-        local dmg = net.ReadUInt(2)
+        local dmg = net.ReadUInt(32)
         local hitdata = net.ReadUInt(5)
         local killtype = net.ReadUInt(3)
         local isliving = bit.band(hitdata, 1) != 0
