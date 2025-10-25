@@ -90,7 +90,7 @@ if SERVER then
 
             -- if you making some gamemode you can add here check for distance and give more points/moneys for long kills
             net.Start("profiteers_hitmark")
-            net.WriteUInt(dmg or 0, 32) -- Damage
+            net.WriteUInt(dmg or 0, 10) -- Damage
             net.WriteUInt(hitdata, 5) -- All the necessary data
             net.WriteUInt(killtype, 3) -- Type of kill damage
             -- net.WriteBool(sentient) -- Sentient (Player or npc) or prop
@@ -437,7 +437,7 @@ else
         local sv = hmoverride:GetBool()
         local mode = sv and hmsv:GetInt() or hm:GetInt()
         if mode <= 0 and !(sv and skullssv:GetBool() or skulls:GetBool()) then return end
-        local dmg = net.ReadUInt(32)
+        local dmg = net.ReadUInt(10)
         local hitdata = net.ReadUInt(5)
         local killtype = net.ReadUInt(3)
         local isliving = bit.band(hitdata, 1) != 0
