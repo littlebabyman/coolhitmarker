@@ -56,6 +56,7 @@ if SERVER then
             local ammo = swep:IsValid() and swep:IsScripted() and string.lower(swep.Primary.Ammo or "default") or "default"
             local armor = ent.Armor and (tonumber(ent.Armor) or (isnumber(ent:Armor()) and ent:Armor()))
             local armored = armor and ent.phm_lastArmor
+            if dmginfo:GetDamage() == 0 then return end
             local dmg = math.Clamp(math.ceil(ent.phm_lastHealth and ent.phm_lastHealth - vichp or dmginfo:GetDamage() * 0.025), 0, 3)
             local dmgtype = dmginfo:GetDamageType()
             local sentient = vicply or vicnpc
@@ -139,6 +140,7 @@ else
     local hm = CreateClientConVar("profiteers_hitmarker_enable", "1", true, true, "Enable Profiteers Hitmarker. 0 disabled, 1 audiovisual, 2 visual only, 3 audio only.", 0, 3)
     local hmpos = CreateClientConVar("profiteers_hitmarker_dynamic", "1", true, true, "Use dynamic ''real'' position for hit markers.", 0, 1)
     local hmscale = CreateClientConVar("profiteers_hitmarker_scale", "1", true, true, "Show Longshot indicators. 1 for all hits, 2 for kills only.", 0.25, 2.5)
+    local hmvolume = CreateClientConVar("profiteers_hitmarker_volume", "0.75", true, true, "Volume level of Profiteers Hitmarkers.", 0, 1)
     local indicators = CreateClientConVar("profiteers_dmgindicator_enable", "1", true, true, "Enable Profiteers Damage indicators.", 0, 1)
     local indicatorscale = CreateClientConVar("profiteers_dmgindicator_scale", "1", true, true, "Custom scaling for Profiteers damage indicators.", 0.25, 2.5)
     local distantshot = CreateClientConVar("profiteers_hitmarker_longshot", "1", true, true, "Show Longshot indicators. 1 for all hits, 2 for kills only.", 0, 2)
@@ -177,6 +179,71 @@ else
     local matarmorhit = Material("profiteers/hiteffectarmor.png", "noclamp smooth")
     local matarmorbreak = Material("profiteers/hiteffectarmorbroken.png", "noclamp smooth")
     
+    local hitsounds = {
+        {
+            name = "CoolHitmarker.ArmorBreak",
+            sound = {
+                "profiteers/breakarmorr.ogg"
+            },
+            channel = CHAN_STATIC,
+            volume = 1,
+            pitch = 100,
+        },
+        {
+            name = "CoolHitmarker.HitFailure",
+            sound = {
+                "profiteers/hitmarkfail.ogg"
+            },
+            channel = CHAN_STATIC,
+            volume = 1,
+            pitch = 100,
+        },
+        {
+            name = "CoolHitmarker.HitHeadshot",
+            sound = {
+                "profiteers/headmarker.ogg"
+            },
+            channel = CHAN_STATIC,
+            volume = 1,
+            pitch = 100,
+        },
+        {
+            name = "CoolHitmarker.HitNormal",
+            sound = {
+                "profiteers/mwhitmarker.ogg"
+            },
+            channel = CHAN_STATIC,
+            volume = 1,
+            pitch = 100,
+        },
+        {
+            name = "CoolHitmarker.HitKill",
+            sound = {
+                "profiteers/newkillmarker.ogg"
+            },
+            channel = CHAN_STATIC,
+            volume = 1,
+            pitch = 100,
+        },
+        {
+            name = "CoolHitmarker.HitArmor",
+            sound = {
+                "player/kevlar1.wav",
+                "player/kevlar2.wav",
+                "player/kevlar3.wav",
+                "player/kevlar4.wav",
+                "player/kevlar5.wav",
+            },
+            channel = CHAN_STATIC,
+            volume = 1,
+            pitch = 100,
+        },
+    }
+
+    for i = 1, #hitsounds do
+        sound.Add(hitsounds[i])
+    end
+
     hook.Add("PopulateToolMenu", "profiteers_hitmark_options", function()
         spawnmenu.AddToolMenuOption("Utilities", "Cool™ Combat", "profiteers_hitmarker", "Hitmarkers", "", "", function(pan)
             pan:SetName("Cool™ Hitmarkers")
@@ -192,6 +259,7 @@ else
             mode:AddChoice("Full hitmarkers", 1)
             mode:AddChoice("Visuals only", 2)
             mode:AddChoice("Sound only", 3)
+            cl:NumSlider("Sound volume", "profiteers_hitmarker_volume", 0, 1, 2)
             cl:NumSlider("Hitmarker scale", "profiteers_hitmarker_scale", 0.25, 2.5, 3)
             cl:CheckBox("Use dynamic position for hit markers", "profiteers_hitmarker_dynamic")
             local long = cl:ComboBox("Longshot indicators", "profiteers_hitmarker_longshot")
@@ -380,6 +448,7 @@ else
         local armored = net.ReadUInt(2)
         local distance = net.ReadUInt(16)
         local longrangemult = net.ReadUInt(6) * 0.1
+        local volume = hmvolume:GetFloat()
         if dmg <= 0 and !isliving then return end
         local lp = LocalPlayer()
         local ct = CurTime()
@@ -390,8 +459,6 @@ else
             end
         end
 
-
-        if lasthm > ct and lasthmkill then return end
         hmauth = sv
         lasthurt = dmg > 0
         lasthmhead = head
@@ -420,6 +487,8 @@ else
         lasthmprop = !isliving
         hmlength = (armored == 2 or killed) and 0.5 or 0.22
 
+        if lasthm - hmlength == ct and !(lasthmarmor == 2 or lasthmkill) then return end -- don't stack too many hit sounds at once
+
         if isliving then
             if !onfire and distance > longrangeshot * longrangemult and lasthurt then
                 lasthmdistance = math.Round(distance * 0.0254, 1)
@@ -430,29 +499,30 @@ else
         lasthm = ct + hmlength
 
         if mode == 0 or mode == 2 then return end
-
+        -- using EmitSound will never have excessive sound delays
         if armored == 2 then -- seperate armor break sond without delay
-            surface.PlaySound("profiteers/breakarmorr.ogg")
+            EmitSound("CoolHitmarker.HitArmorBreak", vector_origin, -1, CHAN_STATIC, volume)
         end
 
         timer.Simple(0.06, function()
             if !lp then return end -- just to be sure
-            if !lasthurt then surface.PlaySound("profiteers/hitmarkfail.ogg") return end
+            if !lasthurt then EmitSound("CoolHitmarker.HitFailure", vector_origin, -1, CHAN_STATIC, volume) return end
             -- juicer when many dmg
             for i = 1, math.Clamp(dmg, 1, 2) do
                 if !onfire and head then
-                    surface.PlaySound("profiteers/headmarker.ogg")
-                elseif armored == 3 then
-                    surface.PlaySound("player/kevlar" .. math.random(5) .. ".wav")
+                    EmitSound("CoolHitmarker.HitHeadshot", vector_origin, -1, CHAN_STATIC, volume)
+                end
+                if armored == 3 then
+                    EmitSound("CoolHitmarker.HitArmor", vector_origin, -1, CHAN_STATIC, volume)
                 else
-                    surface.PlaySound("profiteers/mwhitmarker.ogg")
+                    EmitSound("CoolHitmarker.HitNormal", vector_origin, -1, CHAN_STATIC, volume)
                 end
 
             end
             if killed then
                 timer.Simple(0.03, function()
                     if !IsValid(lp) then return end -- just to be sure
-                    surface.PlaySound("profiteers/newkillmarker.ogg")
+                    EmitSound("CoolHitmarker.HitKill", vector_origin, -1, CHAN_STATIC, volume)
                 end)
             end
         end)
